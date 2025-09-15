@@ -63,36 +63,36 @@ const metrics = [
 const recentTrips = [
   {
     id: 1,
-    name: "Bali Adventure",
-    location: "Indonesia",
+    name: "Berger Paints",
+    location: "India",
     investors: 45,
     targetAmount: 50000,
     currentAmount: 42500,
     expectedReturn: "15%",
     status: "active",
-    endDate: "2024-12-15"
+    endDate: "2025-05-01"
   },
   {
     id: 2,
-    name: "Swiss Alps Trek",
-    location: "Switzerland", 
+    name: "Asian Paints",
+    location: "India", 
     investors: 32,
     targetAmount: 75000,
     currentAmount: 75000,
     expectedReturn: "18%",
     status: "completed",
-    endDate: "2024-10-30"
+    endDate: "2025-05-15"
   },
   {
     id: 3,
-    name: "Tokyo Cultural Tour",
-    location: "Japan",
+    name: "Coca Cola",
+    location: "Global",
     investors: 28,
     targetAmount: 40000,
     currentAmount: 35200,
     expectedReturn: "12%",
     status: "active",
-    endDate: "2024-11-20"
+    endDate: "2025-10-20"
   }
 ];
 
@@ -110,10 +110,10 @@ const investmentGrowthData = [
 ];
 
 const portfolioDistribution = [
-  { name: 'Asia Tours', value: 35, amount: 87500, color: 'hsl(var(--primary))' },
-  { name: 'Europe Adventures', value: 28, amount: 70000, color: 'hsl(var(--success))' },
-  { name: 'Americas Expeditions', value: 22, amount: 55000, color: 'hsl(var(--warning))' },
-  { name: 'Africa Safaris', value: 15, amount: 37500, color: 'hsl(var(--destructive))' }
+  { name: 'Berger Paints', value: 35, amount: 87500, color: 'hsl(var(--primary))' },
+  { name: 'Asian Paints', value: 28, amount: 70000, color: 'hsl(var(--success))' },
+  { name: 'Coca Cola', value: 22, amount: 55000, color: 'hsl(var(--warning))' },
+  { name: 'Dynamic Cable', value: 15, amount: 37500, color: 'hsl(var(--destructive))' }
 ];
 
 const monthlyReturnsData = [
@@ -129,11 +129,11 @@ const monthlyReturnsData = [
 ];
 
 const tripPerformanceData = [
-  { trip: 'Bali', expected: 15, actual: 18.2 },
-  { trip: 'Swiss Alps', expected: 18, actual: 21.5 },
-  { trip: 'Tokyo', expected: 12, actual: 14.8 },
-  { trip: 'Santorini', expected: 14, actual: 16.3 },
-  { trip: 'Safari', expected: 20, actual: 23.1 }
+  { trip: 'Berger', expected: 15, actual: 18.2 },
+  { trip: 'Asian Paints', expected: 18, actual: 21.5 },
+  { trip: 'Coca Cola', expected: 12, actual: 14.8 },
+  { trip: 'Dynamic Cable', expected: 14, actual: 16.3 },
+  { trip: 'Hindustan Unilever', expected: 20, actual: 23.1 }
 ];
 
 const Dashboard = () => {

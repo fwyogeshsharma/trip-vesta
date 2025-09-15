@@ -49,10 +49,10 @@ const transactions = [
     id: 4,
     type: "investment",
     amount: 1200,
-    description: "Investment in Bali Adventure Trip",
+    description: "Investment in Berger Paints",
     date: "2024-08-28",
     status: "completed",
-    tripName: "Bali Adventure",
+    tripName: "Berger Paints",
     category: "trip_investment"
   },
   {
@@ -68,20 +68,20 @@ const transactions = [
     id: 6,
     type: "profit",
     amount: 800,
-    description: "Profit from Swiss Alps Trek",
+    description: "Profit from Asian Paints",
     date: "2024-08-20",
     status: "completed",
-    tripName: "Swiss Alps Trek",
+    tripName: "Asian Paints",
     category: "profit"
   },
   {
     id: 7,
     type: "investment",
     amount: 3500,
-    description: "Investment in Tokyo Cultural Tour",
+    description: "Investment in Coca Cola",
     date: "2024-08-15",
     status: "pending",
-    tripName: "Tokyo Cultural Tour",
+    tripName: "Coca Cola",
     category: "trip_investment"
   }
 ];

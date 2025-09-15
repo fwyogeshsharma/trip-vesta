@@ -30,48 +30,48 @@ import { useToast } from "@/hooks/use-toast";
 const availableTrips = [
   {
     id: 1,
-    name: "Bali Adventure",
-    location: "Indonesia",
-    duration: "14 days",
+    name: "Berger Paints",
+    location: "India",
+    duration: "6 months",
     targetAmount: 50000,
     currentAmount: 42500,
     expectedReturn: "15%",
     investorCount: 45,
     status: "active",
-    endDate: "2024-12-15",
+    endDate: "2025-05-01",
     minInvestment: 500,
-    description: "Explore the beautiful beaches and cultural heritage of Bali with our premium adventure package.",
-    highlights: ["Premium accommodation", "Cultural tours", "Adventure activities", "Professional guides"]
+    description: "Invest in one of India's leading paint manufacturers with strong market presence and growth potential.",
+    highlights: ["Market leader in decorative paints", "Strong distribution network", "Innovative product portfolio", "Consistent dividend payments"]
   },
   {
     id: 2,
-    name: "Swiss Alps Trek",
-    location: "Switzerland", 
-    duration: "10 days",
+    name: "Asian Paints",
+    location: "India", 
+    duration: "8 months",
     targetAmount: 75000,
     currentAmount: 75000,
     expectedReturn: "18%",
     investorCount: 32,
     status: "completed",
-    endDate: "2024-10-30",
+    endDate: "2025-05-15",
     minInvestment: 1000,
-    description: "Experience the breathtaking Swiss Alps with hiking, luxury lodges, and scenic railways.",
-    highlights: ["Luxury mountain lodges", "Scenic train rides", "Professional hiking guides", "Gourmet meals"]
+    description: "Investment opportunity in Asia's largest paint company known for premium quality and innovation.",
+    highlights: ["Asia's largest paint company", "Strong R&D capabilities", "International presence", "Premium brand positioning"]
   },
   {
     id: 3,
-    name: "Tokyo Cultural Tour",
-    location: "Japan",
-    duration: "12 days",
+    name: "Coca Cola",
+    location: "Global",
+    duration: "12 months",
     targetAmount: 40000,
     currentAmount: 35200,
     expectedReturn: "12%",
     investorCount: 28,
     status: "active",
-    endDate: "2024-11-20",
+    endDate: "2025-10-20",
     minInvestment: 300,
-    description: "Immerse yourself in Japanese culture with traditional experiences and modern attractions.",
-    highlights: ["Traditional ryokan stays", "Cultural workshops", "Food experiences", "Local guides"]
+    description: "Invest in the world's leading beverage company with global brand recognition and diversified portfolio.",
+    highlights: ["Global brand leader", "Diversified product portfolio", "Strong cash flows", "Dividend aristocrat"]
   }
 ];
 
@@ -122,7 +122,7 @@ const myInvestments = [
   },
   {
     id: 3,
-    tripName: "Bali Adventure",
+    tripName: "Berger Paints",
     amount: 1200,
     investedDate: "2024-08-28",
     expectedReturn: "15%",

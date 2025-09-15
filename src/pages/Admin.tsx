@@ -62,8 +62,8 @@ const investors = [
 const trips = [
   {
     id: 1,
-    name: "Bali Adventure",
-    location: "Indonesia",
+    name: "Berger Paints",
+    location: "India",
     status: "active",
     targetAmount: 50000,
     currentAmount: 42500,
@@ -75,8 +75,8 @@ const trips = [
   },
   {
     id: 2,
-    name: "Swiss Alps Trek",
-    location: "Switzerland",
+    name: "Asian Paints",
+    location: "India",
     status: "completed",
     targetAmount: 75000,
     currentAmount: 75000,
@@ -88,8 +88,8 @@ const trips = [
   },
   {
     id: 3,
-    name: "Tokyo Cultural Tour",
-    location: "Japan",
+    name: "Coca Cola",
+    location: "Global",
     status: "active",
     targetAmount: 40000,
     currentAmount: 35200,
@@ -98,6 +98,19 @@ const trips = [
     endDate: "2024-11-20",
     expectedReturn: "12%",
     tdsPercentage: 2.0
+  },
+  {
+    id: 4,
+    name: "Dynamic Cable",
+    location: "India",
+    status: "active",
+    targetAmount: 60000,
+    currentAmount: 48000,
+    investorCount: 38,
+    startDate: "2024-11-15",
+    endDate: "2024-12-30",
+    expectedReturn: "16%",
+    tdsPercentage: 2.8
   }
 ];
 
@@ -704,7 +717,7 @@ const Admin = () => {
                           <Users className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium">John Smith → Bali Adventure</p>
+                          <p className="font-medium">John Smith → Berger Paints</p>
                           <p className="text-sm text-muted-foreground">Assigned 2 hours ago</p>
                         </div>
                       </div>
@@ -720,7 +733,7 @@ const Admin = () => {
                           <Users className="h-5 w-5 text-success" />
                         </div>
                         <div>
-                          <p className="font-medium">Sarah Johnson → Tokyo Cultural Tour</p>
+                          <p className="font-medium">Sarah Johnson → Coca Cola</p>
                           <p className="text-sm text-muted-foreground">Assigned 1 day ago</p>
                         </div>
                       </div>
@@ -736,7 +749,7 @@ const Admin = () => {
                           <Users className="h-5 w-5 text-warning" />
                         </div>
                         <div>
-                          <p className="font-medium">Mike Davis → Swiss Alps Trek</p>
+                          <p className="font-medium">Mike Davis → Asian Paints</p>
                           <p className="text-sm text-muted-foreground">Assigned 3 days ago</p>
                         </div>
                       </div>
