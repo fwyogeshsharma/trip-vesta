@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   MapPin, 
   Calendar, 
@@ -11,7 +14,8 @@ import {
   TrendingUp,
   Users,
   Clock,
-  CheckCircle
+  CheckCircle,
+  ShoppingCart
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -73,7 +77,9 @@ const myInvestments = [
     expectedReturn: "14%",
     currentValue: 2650,
     status: "active",
-    maturityDate: "2024-12-01"
+    maturityDate: "2024-12-01",
+    progress: 75,
+    daysRemaining: 47
   },
   {
     id: 2,
@@ -83,13 +89,29 @@ const myInvestments = [
     expectedReturn: "20%",
     currentValue: 5800,
     status: "completed",
-    maturityDate: "2024-10-20"
+    maturityDate: "2024-10-20",
+    progress: 100,
+    daysRemaining: 0
+  },
+  {
+    id: 3,
+    tripName: "Bali Adventure",
+    amount: 1200,
+    investedDate: "2024-08-28",
+    expectedReturn: "15%",
+    currentValue: 1290,
+    status: "active",
+    maturityDate: "2024-12-15",
+    progress: 60,
+    daysRemaining: 61
   }
 ];
 
 const Trips = () => {
   const { toast } = useToast();
-  const [selectedTrip, setSelectedTrip] = useState<number | null>(null);
+  const [selectedTrips, setSelectedTrips] = useState<Set<number>>(new Set());
+  const [investmentAmounts, setInvestmentAmounts] = useState<Record<number, string>>({});
+  const [isInvesting, setIsInvesting] = useState(false);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -108,11 +130,77 @@ const Trips = () => {
     return Math.round((current / target) * 100);
   };
 
-  const handleInvest = (tripId: number, tripName: string) => {
-    toast({
-      title: "Investment Initiated",
-      description: `Investment process started for ${tripName}`,
+  const handleTripSelection = (tripId: number, checked: boolean) => {
+    const newSelected = new Set(selectedTrips);
+    if (checked) {
+      newSelected.add(tripId);
+    } else {
+      newSelected.delete(tripId);
+      // Remove investment amount when unchecked
+      const newAmounts = { ...investmentAmounts };
+      delete newAmounts[tripId];
+      setInvestmentAmounts(newAmounts);
+    }
+    setSelectedTrips(newSelected);
+  };
+
+  const handleAmountChange = (tripId: number, amount: string) => {
+    setInvestmentAmounts(prev => ({
+      ...prev,
+      [tripId]: amount
+    }));
+  };
+
+  const handleInvestInSelected = async () => {
+    if (selectedTrips.size === 0) {
+      toast({
+        title: "No Trips Selected",
+        description: "Please select at least one trip to invest in",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate amounts
+    const invalidAmounts = Array.from(selectedTrips).filter(tripId => {
+      const amount = parseFloat(investmentAmounts[tripId] || "0");
+      const trip = availableTrips.find(t => t.id === tripId);
+      return !amount || amount < (trip?.minInvestment || 0);
     });
+
+    if (invalidAmounts.length > 0) {
+      toast({
+        title: "Invalid Investment Amounts",
+        description: "Please enter valid amounts for all selected trips",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsInvesting(true);
+    
+    // Simulate investment process
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const totalAmount = Array.from(selectedTrips).reduce((sum, tripId) => {
+      return sum + parseFloat(investmentAmounts[tripId] || "0");
+    }, 0);
+
+    toast({
+      title: "Investment Successful",
+      description: `Successfully invested $${totalAmount.toLocaleString()} across ${selectedTrips.size} trips`,
+    });
+
+    // Reset selections
+    setSelectedTrips(new Set());
+    setInvestmentAmounts({});
+    setIsInvesting(false);  
+  };
+
+  const getTotalInvestment = () => {
+    return Array.from(selectedTrips).reduce((sum, tripId) => {
+      return sum + parseFloat(investmentAmounts[tripId] || "0");
+    }, 0);
   };
 
   return (
@@ -132,30 +220,67 @@ const Trips = () => {
         </TabsList>
 
         <TabsContent value="available" className="space-y-4">
+          {/* Investment Summary Card */}
+          {selectedTrips.size > 0 && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Selected Investments ({selectedTrips.size} trips)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Investment Amount</p>
+                    <p className="text-2xl font-bold">${getTotalInvestment().toLocaleString()}</p>
+                  </div>
+                  <Button 
+                    onClick={handleInvestInSelected}
+                    disabled={isInvesting || getTotalInvestment() === 0}
+                    size="lg"
+                  >
+                    {isInvesting ? "Processing..." : `Invest in ${selectedTrips.size} Trips`}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-6">
             {availableTrips.map((trip) => (
-              <Card key={trip.id} className="overflow-hidden">
+              <Card key={trip.id} className={`overflow-hidden transition-all ${
+                selectedTrips.has(trip.id) ? 'ring-2 ring-primary/50 bg-primary/5' : ''
+              }`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        {trip.name}
-                        {getStatusBadge(trip.status)}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-4">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {trip.location}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {trip.duration}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          {trip.investorCount} investors
-                        </span>
-                      </CardDescription>
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedTrips.has(trip.id)}
+                        onCheckedChange={(checked) => handleTripSelection(trip.id, !!checked)}
+                        disabled={trip.status === "completed"}
+                        className="mt-1"
+                      />
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2">
+                          {trip.name}
+                          {getStatusBadge(trip.status)}
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-4">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            {trip.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {trip.duration}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {trip.investorCount} investors
+                          </span>
+                        </CardDescription>
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-success">
@@ -167,6 +292,29 @@ const Trips = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">{trip.description}</p>
+                  
+                  {/* Investment Amount Input - Show when selected */}
+                  {selectedTrips.has(trip.id) && (
+                    <Card className="p-4 bg-muted/50">
+                      <div className="space-y-2">
+                        <Label htmlFor={`amount-${trip.id}`}>Investment Amount</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={`amount-${trip.id}`}
+                            type="number"
+                            placeholder={`Min: $${trip.minInvestment}`}
+                            value={investmentAmounts[trip.id] || ""}
+                            onChange={(e) => handleAmountChange(trip.id, e.target.value)}
+                            className="flex-1"
+                          />
+                          <span className="text-sm text-muted-foreground">USD</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Minimum investment: ${trip.minInvestment.toLocaleString()}
+                        </p>
+                      </div>
+                    </Card>
+                  )}
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -208,20 +356,6 @@ const Trips = () => {
                       ))}
                     </div>
                   </div>
-
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={() => handleInvest(trip.id, trip.name)}
-                      disabled={trip.status === "completed"}
-                      className="flex-1"
-                    >
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      {trip.status === "completed" ? "Completed" : "Invest Now"}
-                    </Button>
-                    <Button variant="outline" onClick={() => setSelectedTrip(trip.id)}>
-                      View Details
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -245,7 +379,7 @@ const Trips = () => {
                     {getStatusBadge(investment.status)}
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Invested Amount</p>
@@ -266,6 +400,46 @@ const Trips = () => {
                         {investment.status === "completed" ? "Completed" : "Maturity Date"}
                       </p>
                       <p className="text-lg font-semibold">{investment.maturityDate}</p>
+                    </div>
+                  </div>
+
+                  {/* Trip Progress Section */}
+                  <div className="space-y-3 pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium">Trip Progress</h4>
+                      <span className="text-sm text-muted-foreground">
+                        {investment.status === "completed" ? "Completed" : `${investment.daysRemaining} days remaining`}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>{investment.status === "completed" ? "Trip Completed" : "Progress"}</span>
+                        <span>{investment.progress}%</span>
+                      </div>
+                      <Progress 
+                        value={investment.progress} 
+                        className="h-3"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 text-center text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Invested Date</p>
+                        <p className="font-medium">{investment.investedDate}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Current Gain</p>
+                        <p className="font-medium text-success">
+                          +${(investment.currentValue - investment.amount).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">ROI</p>
+                        <p className="font-medium text-success">
+                          +{(((investment.currentValue - investment.amount) / investment.amount) * 100).toFixed(1)}%
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
