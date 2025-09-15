@@ -17,7 +17,8 @@ import {
   MapPin,
   Calendar,
   UserPlus,
-  Target
+  Target,
+  Percent
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -69,7 +70,8 @@ const trips = [
     investorCount: 45,
     startDate: "2024-11-01",
     endDate: "2024-12-15",
-    expectedReturn: "15%"
+    expectedReturn: "15%",
+    tdsPercentage: 2.5
   },
   {
     id: 2,
@@ -81,7 +83,8 @@ const trips = [
     investorCount: 32,
     startDate: "2024-09-15",
     endDate: "2024-10-30",
-    expectedReturn: "18%"
+    expectedReturn: "18%",
+    tdsPercentage: 3.0
   },
   {
     id: 3,
@@ -93,7 +96,8 @@ const trips = [
     investorCount: 28,
     startDate: "2024-10-20",
     endDate: "2024-11-20",
-    expectedReturn: "12%"
+    expectedReturn: "12%",
+    tdsPercentage: 2.0
   }
 ];
 
@@ -102,6 +106,8 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInterest, setEditingInterest] = useState<number | null>(null);
   const [newInterestRate, setNewInterestRate] = useState("");
+  const [editingTDS, setEditingTDS] = useState<number | null>(null);
+  const [newTDSRate, setNewTDSRate] = useState("");
   
   // Trip assignment state
   const [selectedInvestor, setSelectedInvestor] = useState("");
@@ -216,6 +222,25 @@ const Admin = () => {
       title: "Edit Trip",
       description: `Edit dialog for ${tripName} would open here`,
     });
+  };
+
+  const handleUpdateTDS = (tripId: number) => {
+    if (!newTDSRate || parseFloat(newTDSRate) < 0 || parseFloat(newTDSRate) > 10) {
+      toast({
+        title: "Invalid TDS Rate",
+        description: "Please enter a valid TDS rate between 0% and 10%",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "TDS Rate Updated",
+      description: `TDS rate updated to ${newTDSRate}%`,
+    });
+    
+    setEditingTDS(null);
+    setNewTDSRate("");
   };
 
   const totalStats = {
@@ -443,7 +468,7 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t text-center">
+                    <div className="grid grid-cols-4 gap-4 mt-4 pt-4 border-t text-center">
                       <div>
                         <p className="text-sm text-muted-foreground">Target Amount</p>
                         <p className="font-semibold">${trip.targetAmount.toLocaleString()}</p>
@@ -458,9 +483,59 @@ const Admin = () => {
                           {Math.round((trip.currentAmount / trip.targetAmount) * 100)}%
                         </p>
                       </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">TDS Rate</p>
+                        <p className="font-semibold text-warning">{trip.tdsPercentage}%</p>
+                      </div>
                     </div>
 
-                    <div className="flex justify-end mt-4 pt-4 border-t">
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">TDS (Tax Deducted at Source):</span>
+                        {editingTDS === trip.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={newTDSRate}
+                              onChange={(e) => setNewTDSRate(e.target.value)}
+                              className="w-20 h-8"
+                              placeholder={trip.tdsPercentage.toString()}
+                              min="0"
+                              max="10"
+                              step="0.1"
+                            />
+                            <span className="text-sm">%</span>
+                            <Button size="sm" onClick={() => handleUpdateTDS(trip.id)}>
+                              Save
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => {
+                                setEditingTDS(null);
+                                setNewTDSRate("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-warning">{trip.tdsPercentage}%</span>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingTDS(trip.id);
+                                setNewTDSRate(trip.tdsPercentage.toString());
+                              }}
+                            >
+                              <Percent className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      
                       <Button 
                         variant="outline" 
                         onClick={() => handleEditTrip(trip.id, trip.name)}
