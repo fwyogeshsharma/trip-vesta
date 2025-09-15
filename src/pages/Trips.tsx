@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TripMilestones } from "@/components/TripMilestones";
 import { 
   MapPin, 
   Calendar, 
@@ -15,7 +16,13 @@ import {
   Users,
   Clock,
   CheckCircle,
-  ShoppingCart
+  ShoppingCart,
+  MapIcon,
+  Plane,
+  Luggage,
+  Building,
+  FileText,
+  PlayCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -79,7 +86,17 @@ const myInvestments = [
     status: "active",
     maturityDate: "2024-12-01",
     progress: 75,
-    daysRemaining: 47
+    daysRemaining: 47,
+    milestones: [
+      { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-20" },
+      { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-25" },
+      { id: 3, name: "Travel Arrangements", icon: Plane, status: "completed" as const, date: "2024-10-01" },
+      { id: 4, name: "Accommodation Ready", icon: Building, status: "completed" as const, date: "2024-10-05" },
+      { id: 5, name: "Service Delivery", icon: MapIcon, status: "current" as const, date: "2024-10-15" },
+      { id: 6, name: "Trip Completion", icon: CheckCircle, status: "pending" as const, date: "2024-11-20" },
+      { id: 7, name: "Invoice Processing", icon: FileText, status: "pending" as const, date: "2024-11-25" },
+      { id: 8, name: "Returns Distributed", icon: DollarSign, status: "pending" as const, date: "2024-12-01" }
+    ]
   },
   {
     id: 2,
@@ -91,7 +108,17 @@ const myInvestments = [
     status: "completed",
     maturityDate: "2024-10-20",
     progress: 100,
-    daysRemaining: 0
+    daysRemaining: 0,
+    milestones: [
+      { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-08-25" },
+      { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-08-30" },
+      { id: 3, name: "Travel Arrangements", icon: Plane, status: "completed" as const, date: "2024-09-05" },
+      { id: 4, name: "Accommodation Ready", icon: Building, status: "completed" as const, date: "2024-09-10" },
+      { id: 5, name: "Service Delivery", icon: MapIcon, status: "completed" as const, date: "2024-09-25" },
+      { id: 6, name: "Trip Completion", icon: CheckCircle, status: "completed" as const, date: "2024-10-15" },
+      { id: 7, name: "Invoice Processing", icon: FileText, status: "completed" as const, date: "2024-10-18" },
+      { id: 8, name: "Returns Distributed", icon: DollarSign, status: "completed" as const, date: "2024-10-20" }
+    ]
   },
   {
     id: 3,
@@ -103,7 +130,17 @@ const myInvestments = [
     status: "active",
     maturityDate: "2024-12-15",
     progress: 60,
-    daysRemaining: 61
+    daysRemaining: 61,
+    milestones: [
+      { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-01" },
+      { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-08" },
+      { id: 3, name: "Travel Arrangements", icon: Plane, status: "completed" as const, date: "2024-09-15" },
+      { id: 4, name: "Accommodation Ready", icon: Building, status: "current" as const, date: "2024-10-20" },
+      { id: 5, name: "Service Delivery", icon: MapIcon, status: "pending" as const, date: "2024-11-01" },
+      { id: 6, name: "Trip Completion", icon: CheckCircle, status: "pending" as const, date: "2024-12-01" },
+      { id: 7, name: "Invoice Processing", icon: FileText, status: "pending" as const, date: "2024-12-10" },
+      { id: 8, name: "Returns Distributed", icon: DollarSign, status: "pending" as const, date: "2024-12-15" }
+    ]
   }
 ];
 
@@ -363,9 +400,9 @@ const Trips = () => {
         </TabsContent>
 
         <TabsContent value="my-investments" className="space-y-4">
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {myInvestments.map((investment) => (
-              <Card key={investment.id}>
+              <Card key={investment.id} className="overflow-hidden">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
@@ -379,7 +416,8 @@ const Trips = () => {
                     {getStatusBadge(investment.status)}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
+                  {/* Investment Overview */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Invested Amount</p>
@@ -403,10 +441,10 @@ const Trips = () => {
                     </div>
                   </div>
 
-                  {/* Trip Progress Section */}
+                  {/* Overall Progress */}
                   <div className="space-y-3 pt-4 border-t">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium">Trip Progress</h4>
+                      <h4 className="text-sm font-medium">Overall Progress</h4>
                       <span className="text-sm text-muted-foreground">
                         {investment.status === "completed" ? "Completed" : `${investment.daysRemaining} days remaining`}
                       </span>
@@ -441,6 +479,11 @@ const Trips = () => {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Trip Milestones */}
+                  <div className="pt-4 border-t">
+                    <TripMilestones milestones={investment.milestones} />
                   </div>
                 </CardContent>
               </Card>
