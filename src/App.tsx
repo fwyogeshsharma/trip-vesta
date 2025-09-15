@@ -1,9 +1,15 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { InvestmentSidebar } from "@/components/InvestmentSidebar";
+import Dashboard from "./pages/Dashboard";
+import Wallet from "./pages/Wallet";
+import Trips from "./pages/Trips";
+import History from "./pages/History";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -14,11 +20,30 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <SidebarProvider>
+          <div className="flex min-h-screen w-full">
+            <InvestmentSidebar />
+            <div className="flex-1 flex flex-col">
+              <header className="h-12 flex items-center border-b px-4">
+                <SidebarTrigger />
+                <h2 className="ml-4 font-semibold text-lg">Investment Portal</h2>
+              </header>
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/wallet" element={<Wallet />} />
+                  <Route path="/trips" element={<Trips />} />
+                  <Route path="/history" element={<History />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/investors" element={<Admin />} />
+                  <Route path="/admin/analytics" element={<Admin />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+            </div>
+          </div>
+        </SidebarProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
