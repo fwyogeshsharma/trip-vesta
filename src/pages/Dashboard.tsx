@@ -7,8 +7,26 @@ import {
   TrendingUp, 
   DollarSign,
   Activity,
-  Target
+  Target,
+  BarChart3,
+  PieChart
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Cell,
+  Area,
+  AreaChart,
+  Pie
+} from "recharts";
 
 // Mock data - replace with real data from your backend
 const metrics = [
@@ -78,6 +96,46 @@ const recentTrips = [
   }
 ];
 
+// Analytics data for charts
+const investmentGrowthData = [
+  { month: 'Jan', totalValue: 45000, profit: 2100 },
+  { month: 'Feb', totalValue: 52000, profit: 2800 },
+  { month: 'Mar', totalValue: 61000, profit: 3200 },
+  { month: 'Apr', totalValue: 68000, profit: 3800 },
+  { month: 'May', totalValue: 78000, profit: 4500 },
+  { month: 'Jun', totalValue: 85000, profit: 5200 },
+  { month: 'Jul', totalValue: 94000, profit: 5900 },
+  { month: 'Aug', totalValue: 108000, profit: 6800 },
+  { month: 'Sep', totalValue: 125000, profit: 7600 }
+];
+
+const portfolioDistribution = [
+  { name: 'Asia Tours', value: 35, amount: 87500, color: 'hsl(var(--primary))' },
+  { name: 'Europe Adventures', value: 28, amount: 70000, color: 'hsl(var(--success))' },
+  { name: 'Americas Expeditions', value: 22, amount: 55000, color: 'hsl(var(--warning))' },
+  { name: 'Africa Safaris', value: 15, amount: 37500, color: 'hsl(var(--destructive))' }
+];
+
+const monthlyReturnsData = [
+  { month: 'Jan', returns: 8.2 },
+  { month: 'Feb', returns: 12.1 },
+  { month: 'Mar', returns: 15.3 },
+  { month: 'Apr', returns: 9.8 },
+  { month: 'May', returns: 18.5 },
+  { month: 'Jun', returns: 14.2 },
+  { month: 'Jul', returns: 21.1 },
+  { month: 'Aug', returns: 16.8 },
+  { month: 'Sep', returns: 19.4 }
+];
+
+const tripPerformanceData = [
+  { trip: 'Bali', expected: 15, actual: 18.2 },
+  { trip: 'Swiss Alps', expected: 18, actual: 21.5 },
+  { trip: 'Tokyo', expected: 12, actual: 14.8 },
+  { trip: 'Santorini', expected: 14, actual: 16.3 },
+  { trip: 'Safari', expected: 20, actual: 23.1 }
+];
+
 const Dashboard = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -111,6 +169,156 @@ const Dashboard = () => {
         {metrics.map((metric, index) => (
           <MetricCard key={index} {...metric} />
         ))}
+      </div>
+
+      {/* Analytics Charts */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Investment Growth Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Investment Growth
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={investmentGrowthData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value, name) => [
+                    `$${Number(value).toLocaleString()}`, 
+                    name === 'totalValue' ? 'Total Value' : 'Profit'
+                  ]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="totalValue"
+                  stroke="hsl(var(--primary))"
+                  fill="url(#colorValue)"
+                  strokeWidth={2}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="profit"
+                  stroke="hsl(var(--success))"
+                  fill="url(#colorProfit)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Portfolio Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5" />
+              Portfolio Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsPieChart>
+                <Pie
+                  data={portfolioDistribution}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  dataKey="value"
+                  label={({name, value}) => `${name}: ${value}%`}
+                >
+                  {portfolioDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value, name, props) => [
+                    `${value}% ($${props.payload.amount.toLocaleString()})`,
+                    'Share'
+                  ]}
+                />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Monthly Returns */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Monthly Returns (%)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlyReturnsData}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value) => [`${value}%`, 'Returns']}
+                />
+                <Bar 
+                  dataKey="returns" 
+                  fill="hsl(var(--success))"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Trip Performance Comparison */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Trip Performance vs Expected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={tripPerformanceData}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="trip" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value, name) => [
+                    `${value}%`, 
+                    name === 'expected' ? 'Expected' : 'Actual'
+                  ]}
+                />
+                <Bar 
+                  dataKey="expected" 
+                  fill="hsl(var(--muted-foreground))"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar 
+                  dataKey="actual" 
+                  fill="hsl(var(--primary))"
+                  radius={[2, 2, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Trips */}
