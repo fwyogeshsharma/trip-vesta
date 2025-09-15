@@ -5,8 +5,7 @@ import {
   MapPin,
   History,
   Settings,
-  TrendingUp,
-  Users
+  TrendingUp
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,8 +27,6 @@ const userItems = [
 
 const adminItems = [
   { title: "Admin Panel", url: "/admin", icon: Settings },
-  { title: "Investors", url: "/admin/investors", icon: Users },
-  { title: "Analytics", url: "/admin/analytics", icon: TrendingUp },
 ];
 
 export function InvestmentSidebar() {
@@ -42,10 +39,10 @@ export function InvestmentSidebar() {
   };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center w-full transition-colors ${
-      isActive 
-        ? "bg-primary text-primary-foreground font-medium" 
-        : "hover:bg-accent hover:text-accent-foreground"
+    `flex items-center w-full transition-colors text-black ${
+      isActive
+        ? "bg-primary text-primary-foreground font-medium"
+        : "text-black hover:bg-accent hover:text-accent-foreground"
     }`;
 
   return (
@@ -56,12 +53,12 @@ export function InvestmentSidebar() {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">InvestPortal</span>
+            <span className="font-bold text-lg text-black">InvestPortal</span>
           </div>
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Investment</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-black">Investment</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {userItems.map((item) => (
@@ -79,7 +76,7 @@ export function InvestmentSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-black">Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {adminItems.map((item) => (
