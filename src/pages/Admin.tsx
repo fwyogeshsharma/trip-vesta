@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Settings, 
   Users, 
@@ -13,7 +15,9 @@ import {
   Search,
   DollarSign,
   MapPin,
-  Calendar
+  Calendar,
+  UserPlus,
+  Target
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -98,6 +102,12 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInterest, setEditingInterest] = useState<number | null>(null);
   const [newInterestRate, setNewInterestRate] = useState("");
+  
+  // Trip assignment state
+  const [selectedInvestor, setSelectedInvestor] = useState("");
+  const [selectedTrip, setSelectedTrip] = useState("");
+  const [assignmentAmount, setAssignmentAmount] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const filteredInvestors = investors.filter(investor => 
     investor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,6 +144,57 @@ const Admin = () => {
     
     setEditingInterest(null);
     setNewInterestRate("");
+  };
+
+  const handleAssignTripToInvestor = async () => {
+    if (!selectedInvestor || !selectedTrip || !assignmentAmount) {
+      toast({
+        title: "Missing Information",
+        description: "Please select investor, trip, and enter amount",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const amount = parseFloat(assignmentAmount);
+    if (amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid investment amount",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const investor = investors.find(inv => inv.id.toString() === selectedInvestor);
+    const trip = trips.find(t => t.id.toString() === selectedTrip);
+
+    if (investor && trip) {
+      if (amount > investor.walletBalance) {
+        toast({
+          title: "Insufficient Balance",
+          description: `${investor.name} only has $${investor.walletBalance.toLocaleString()} in their wallet`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setIsAssigning(true);
+      
+      // Simulate assignment process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast({
+        title: "Trip Assignment Successful",
+        description: `Assigned ${trip.name} to ${investor.name} for $${amount.toLocaleString()}`,
+      });
+
+      // Reset form
+      setSelectedInvestor("");
+      setSelectedTrip("");
+      setAssignmentAmount("");
+      setIsAssigning(false);
+    }
   };
 
   const handleAssignFunds = (investorId: number, investorName: string) => {
@@ -221,6 +282,7 @@ const Admin = () => {
         <TabsList>
           <TabsTrigger value="investors">Investors</TabsTrigger>
           <TabsTrigger value="trips">Trip Management</TabsTrigger>
+          <TabsTrigger value="assignments">Trip Assignments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="investors" className="space-y-4">
@@ -321,7 +383,10 @@ const Admin = () => {
                       <Button 
                         onClick={() => handleAssignFunds(investor.id, investor.name)}
                         disabled={investor.walletBalance === 0}
+                        variant="outline"
+                        size="sm"
                       >
+                        <UserPlus className="h-4 w-4 mr-1" />
                         Assign Funds
                       </Button>
                     </div>
@@ -407,6 +472,207 @@ const Admin = () => {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="assignments" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Assign Trips to Investors
+              </CardTitle>
+              <CardDescription>
+                Manually assign investment opportunities to specific investors using their wallet funds
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Assignment Form */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card className="p-4 bg-muted/30">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="investor-select">Select Investor</Label>
+                      <Select value={selectedInvestor} onValueChange={setSelectedInvestor}>
+                        <SelectTrigger className="bg-background border z-50">
+                          <SelectValue placeholder="Choose an investor..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border z-50 shadow-lg">
+                          {investors.map((investor) => (
+                            <SelectItem key={investor.id} value={investor.id.toString()}>
+                              <div className="flex items-center justify-between w-full">
+                                <span>{investor.name}</span>
+                                <Badge variant="outline" className="ml-2">
+                                  ${investor.walletBalance.toLocaleString()}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedInvestor && (
+                        <p className="text-xs text-muted-foreground">
+                          Available Balance: ${investors.find(inv => inv.id.toString() === selectedInvestor)?.walletBalance.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="trip-select">Select Trip</Label>
+                      <Select value={selectedTrip} onValueChange={setSelectedTrip}>
+                        <SelectTrigger className="bg-background border z-40">
+                          <SelectValue placeholder="Choose a trip..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border z-40 shadow-lg">
+                          {trips.filter(trip => trip.status === "active").map((trip) => (
+                            <SelectItem key={trip.id} value={trip.id.toString()}>
+                              <div className="flex items-center justify-between w-full">
+                                <span>{trip.name}</span>
+                                <Badge variant="outline" className="ml-2">
+                                  {trip.expectedReturn}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedTrip && (
+                        <p className="text-xs text-muted-foreground">
+                          Expected Return: {trips.find(t => t.id.toString() === selectedTrip)?.expectedReturn}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="assignment-amount">Investment Amount</Label>
+                      <Input
+                        id="assignment-amount"
+                        type="number"
+                        placeholder="0.00"
+                        value={assignmentAmount}
+                        onChange={(e) => setAssignmentAmount(e.target.value)}
+                        className="bg-background"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Amount will be deducted from investor's wallet balance
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Assignment Summary */}
+                <Card className="p-4 bg-primary/5 border-primary/20">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      Assignment Summary
+                    </h4>
+                    
+                    {selectedInvestor && selectedTrip && assignmentAmount ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Investor:</span>
+                          <span className="font-medium">
+                            {investors.find(inv => inv.id.toString() === selectedInvestor)?.name}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Trip:</span>
+                          <span className="font-medium">
+                            {trips.find(t => t.id.toString() === selectedTrip)?.name}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Investment Amount:</span>
+                          <span className="font-semibold text-lg">
+                            ${parseFloat(assignmentAmount || '0').toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Expected Return:</span>
+                          <span className="font-medium text-success">
+                            {trips.find(t => t.id.toString() === selectedTrip)?.expectedReturn}
+                          </span>
+                        </div>
+                        <div className="pt-3 border-t">
+                          <Button 
+                            onClick={handleAssignTripToInvestor}
+                            disabled={isAssigning}
+                            className="w-full"
+                          >
+                            {isAssigning ? "Assigning..." : "Assign Trip to Investor"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Select investor, trip, and amount to preview assignment</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Recent Assignments History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Recent Trip Assignments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Mock recent assignments */}
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">John Smith → Bali Adventure</p>
+                          <p className="text-sm text-muted-foreground">Assigned 2 hours ago</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">$2,500</p>
+                        <p className="text-xs text-muted-foreground">15% return</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-success" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Sarah Johnson → Tokyo Cultural Tour</p>
+                          <p className="text-sm text-muted-foreground">Assigned 1 day ago</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">$1,800</p>
+                        <p className="text-xs text-muted-foreground">12% return</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-warning" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Mike Davis → Swiss Alps Trek</p>
+                          <p className="text-sm text-muted-foreground">Assigned 3 days ago</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">$4,200</p>
+                        <p className="text-xs text-muted-foreground">18% return</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </CardContent>
           </Card>
         </TabsContent>
