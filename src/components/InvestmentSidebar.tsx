@@ -17,7 +17,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 
 const userItems = [
@@ -34,11 +33,8 @@ const adminItems = [
 ];
 
 export function InvestmentSidebar() {
-  const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
-
-  const isCollapsed = state === "collapsed";
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
@@ -53,16 +49,14 @@ export function InvestmentSidebar() {
     }`;
 
   return (
-    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
+    <Sidebar className="w-64" collapsible="none">
       <SidebarContent>
         <div className="p-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-primary-foreground" />
             </div>
-            {!isCollapsed && (
-              <span className="font-bold text-lg">InvestPortal</span>
-            )}
+            <span className="font-bold text-lg">InvestPortal</span>
           </div>
         </div>
 
@@ -75,7 +69,7 @@ export function InvestmentSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end={item.url === "/"} className={getNavCls}>
                       <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span className="ml-2">{item.title}</span>}
+                      <span className="ml-2">{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -93,7 +87,7 @@ export function InvestmentSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} className={getNavCls}>
                       <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span className="ml-2">{item.title}</span>}
+                      <span className="ml-2">{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

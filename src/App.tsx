@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { InvestmentSidebar } from "@/components/InvestmentSidebar";
@@ -25,8 +25,7 @@ const App = () => (
             <InvestmentSidebar />
             <div className="flex-1 flex flex-col">
               <header className="h-12 flex items-center border-b px-4">
-                <SidebarTrigger />
-                <h2 className="ml-4 font-semibold text-lg">Investment Portal</h2>
+                <h2 className="font-semibold text-lg">Investment Portal</h2>
               </header>
               <main className="flex-1">
                 <Routes>
