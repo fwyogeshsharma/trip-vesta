@@ -28,9 +28,9 @@ const investors = [
     id: 1,
     name: "John Smith",
     email: "john@example.com",
-    totalInvested: 15000,
-    walletBalance: 2500,
-    profitEarned: 2300,
+    totalInvested: 1245000,
+    walletBalance: 207500,
+    profitEarned: 190900,
     joinedDate: "2024-01-15",
     status: "active",
     interestRate: 12
@@ -39,9 +39,9 @@ const investors = [
     id: 2,
     name: "Sarah Johnson",
     email: "sarah@example.com",
-    totalInvested: 8500,
-    walletBalance: 1200,
-    profitEarned: 980,
+    totalInvested: 705500,
+    walletBalance: 99600,
+    profitEarned: 81340,
     joinedDate: "2024-02-20",
     status: "active",
     interestRate: 14
@@ -50,9 +50,9 @@ const investors = [
     id: 3,
     name: "Mike Davis",
     email: "mike@example.com",
-    totalInvested: 22000,
-    walletBalance: 3200,
-    profitEarned: 4100,
+    totalInvested: 1826000,
+    walletBalance: 265600,
+    profitEarned: 340300,
     joinedDate: "2023-12-10",
     status: "active",
     interestRate: 16
@@ -65,8 +65,8 @@ const trips = [
     name: "Berger Paints",
     location: "India",
     status: "active",
-    targetAmount: 50000,
-    currentAmount: 42500,
+    targetAmount: 4150000,
+    currentAmount: 3527500,
     investorCount: 45,
     startDate: "2024-11-01",
     endDate: "2024-12-15",
@@ -78,8 +78,8 @@ const trips = [
     name: "Asian Paints",
     location: "India",
     status: "completed",
-    targetAmount: 75000,
-    currentAmount: 75000,
+    targetAmount: 6225000,
+    currentAmount: 6225000,
     investorCount: 32,
     startDate: "2024-09-15",
     endDate: "2024-10-30",
@@ -91,8 +91,8 @@ const trips = [
     name: "Coca Cola",
     location: "Global",
     status: "active",
-    targetAmount: 40000,
-    currentAmount: 35200,
+    targetAmount: 3320000,
+    currentAmount: 2921600,
     investorCount: 28,
     startDate: "2024-10-20",
     endDate: "2024-11-20",
@@ -104,8 +104,8 @@ const trips = [
     name: "Dynamic Cable",
     location: "India",
     status: "active",
-    targetAmount: 60000,
-    currentAmount: 48000,
+    targetAmount: 4980000,
+    currentAmount: 3984000,
     investorCount: 38,
     startDate: "2024-11-15",
     endDate: "2024-12-30",
@@ -192,7 +192,7 @@ const Admin = () => {
       if (amount > investor.walletBalance) {
         toast({
           title: "Insufficient Balance",
-          description: `${investor.name} only has $${investor.walletBalance.toLocaleString()} in their wallet`,
+          description: `${investor.name} only has ₹${investor.walletBalance.toLocaleString()} in their wallet`,
           variant: "destructive"
         });
         return;
@@ -205,7 +205,7 @@ const Admin = () => {
       
       toast({
         title: "Trip Assignment Successful",
-        description: `Assigned ${trip.name} to ${investor.name} for $${amount.toLocaleString()}`,
+        description: `Assigned ${trip.name} to ${investor.name} for ₹${amount.toLocaleString()}`,
       });
 
       // Reset form
@@ -291,7 +291,7 @@ const Admin = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalStats.totalInvested.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalStats.totalInvested.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -301,7 +301,7 @@ const Admin = () => {
             <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">${totalStats.totalProfit.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-success">₹{totalStats.totalProfit.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -311,7 +311,7 @@ const Admin = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalStats.totalWalletBalance.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalStats.totalWalletBalance.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -361,15 +361,15 @@ const Admin = () => {
                       <div className="grid grid-cols-3 gap-4 text-right text-sm">
                         <div>
                           <p className="text-muted-foreground">Invested</p>
-                          <p className="font-semibold">${investor.totalInvested.toLocaleString()}</p>
+                          <p className="font-semibold">₹{investor.totalInvested.toLocaleString()}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Wallet</p>
-                          <p className="font-semibold">${investor.walletBalance.toLocaleString()}</p>
+                          <p className="font-semibold">₹{investor.walletBalance.toLocaleString()}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Profit</p>
-                          <p className="font-semibold text-success">${investor.profitEarned.toLocaleString()}</p>
+                          <p className="font-semibold text-success">₹{investor.profitEarned.toLocaleString()}</p>
                         </div>
                       </div>
                     </div>
@@ -484,11 +484,11 @@ const Admin = () => {
                     <div className="grid grid-cols-4 gap-4 mt-4 pt-4 border-t text-center">
                       <div>
                         <p className="text-sm text-muted-foreground">Target Amount</p>
-                        <p className="font-semibold">${trip.targetAmount.toLocaleString()}</p>
+                        <p className="font-semibold">₹{trip.targetAmount.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Current Amount</p>
-                        <p className="font-semibold">${trip.currentAmount.toLocaleString()}</p>
+                        <p className="font-semibold">₹{trip.currentAmount.toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Progress</p>
@@ -592,7 +592,7 @@ const Admin = () => {
                               <div className="flex items-center justify-between w-full">
                                 <span>{investor.name}</span>
                                 <Badge variant="outline" className="ml-2">
-                                  ${investor.walletBalance.toLocaleString()}
+                                  ₹{investor.walletBalance.toLocaleString()}
                                 </Badge>
                               </div>
                             </SelectItem>
@@ -601,7 +601,7 @@ const Admin = () => {
                       </Select>
                       {selectedInvestor && (
                         <p className="text-xs text-muted-foreground">
-                          Available Balance: ${investors.find(inv => inv.id.toString() === selectedInvestor)?.walletBalance.toLocaleString()}
+                          Available Balance: ₹{investors.find(inv => inv.id.toString() === selectedInvestor)?.walletBalance.toLocaleString()}
                         </p>
                       )}
                     </div>
@@ -674,7 +674,7 @@ const Admin = () => {
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Investment Amount:</span>
                           <span className="font-semibold text-lg">
-                            ${parseFloat(assignmentAmount || '0').toLocaleString()}
+                            ₹{parseFloat(assignmentAmount || '0').toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
@@ -722,7 +722,7 @@ const Admin = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">$2,500</p>
+                        <p className="font-semibold">₹207,500</p>
                         <p className="text-xs text-muted-foreground">15% return</p>
                       </div>
                     </div>
@@ -738,7 +738,7 @@ const Admin = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">$1,800</p>
+                        <p className="font-semibold">₹149,400</p>
                         <p className="text-xs text-muted-foreground">12% return</p>
                       </div>
                     </div>
@@ -754,7 +754,7 @@ const Admin = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">$4,200</p>
+                        <p className="font-semibold">₹348,600</p>
                         <p className="text-xs text-muted-foreground">18% return</p>
                       </div>
                     </div>

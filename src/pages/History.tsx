@@ -19,7 +19,7 @@ const transactions = [
   {
     id: 1,
     type: "investment",
-    amount: 2500,
+    amount: 207500,
     description: "Investment in Santorini Sunset Trip",
     date: "2024-09-15",
     status: "completed",
@@ -29,7 +29,7 @@ const transactions = [
   {
     id: 2,
     type: "deposit",
-    amount: 5000,
+    amount: 415000,
     description: "Wallet deposit from Chase Bank ****1234",
     date: "2024-09-10",
     status: "completed",
@@ -38,7 +38,7 @@ const transactions = [
   {
     id: 3,
     type: "profit",
-    amount: 450,
+    amount: 37350,
     description: "Profit from African Safari Trip",
     date: "2024-09-05",
     status: "completed",
@@ -48,7 +48,7 @@ const transactions = [
   {
     id: 4,
     type: "investment",
-    amount: 1200,
+    amount: 99600,
     description: "Investment in Berger Paints",
     date: "2024-08-28",
     status: "completed",
@@ -58,7 +58,7 @@ const transactions = [
   {
     id: 5,
     type: "withdrawal",
-    amount: 1000,
+    amount: 83000,
     description: "Withdrawal to Bank of America ****5678",
     date: "2024-08-25",
     status: "completed",
@@ -67,7 +67,7 @@ const transactions = [
   {
     id: 6,
     type: "profit",
-    amount: 800,
+    amount: 66400,
     description: "Profit from Asian Paints",
     date: "2024-08-20",
     status: "completed",
@@ -77,7 +77,7 @@ const transactions = [
   {
     id: 7,
     type: "investment",
-    amount: 3500,
+    amount: 290500,
     description: "Investment in Coca Cola",
     date: "2024-08-15",
     status: "pending",
@@ -188,7 +188,7 @@ const History = () => {
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalStats.totalInvested.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalStats.totalInvested.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -198,7 +198,7 @@ const History = () => {
             <TrendingUp className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">${totalStats.totalProfit.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-success">₹{totalStats.totalProfit.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -208,7 +208,7 @@ const History = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalStats.totalDeposited.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalStats.totalDeposited.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -218,7 +218,7 @@ const History = () => {
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalStats.totalWithdrawn.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalStats.totalWithdrawn.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -305,7 +305,7 @@ const History = () => {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className={`font-semibold ${getAmountColor(transaction.type)}`}>
-                      {getAmountPrefix(transaction.type)}${transaction.amount.toLocaleString()}
+                      {getAmountPrefix(transaction.type)}₹{transaction.amount.toLocaleString()}
                     </p>
                   </div>
                   {getStatusBadge(transaction.status)}

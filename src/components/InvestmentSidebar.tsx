@@ -39,14 +39,14 @@ export function InvestmentSidebar() {
   };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center w-full transition-colors text-black ${
+    `flex items-center w-full transition-colors ${
       isActive
         ? "bg-primary text-primary-foreground font-medium"
-        : "text-black hover:bg-accent hover:text-accent-foreground"
+        : "text-black hover:bg-accent hover:text-black"
     }`;
 
   return (
-    <Sidebar className="w-64" collapsible="none">
+    <Sidebar className="w-64 [&_*]:!text-black" collapsible="none">
       <SidebarContent>
         <div className="p-4">
           <div className="flex items-center gap-2">

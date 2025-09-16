@@ -46,14 +46,14 @@ const metrics = [
   },
   {
     title: "Total Profit",
-    value: "$45,231",
+    value: "₹3,754,173",
     change: "+20.1% from last month",
     changeType: "positive" as const,
     icon: TrendingUp,
   },
   {
     title: "Portfolio Value",
-    value: "$234,567",
+    value: "₹19,469,061",
     change: "+8.5% this month",
     changeType: "positive" as const,
     icon: DollarSign,
@@ -66,8 +66,8 @@ const recentTrips = [
     name: "Berger Paints",
     location: "India",
     investors: 45,
-    targetAmount: 50000,
-    currentAmount: 42500,
+    targetAmount: 4150000,
+    currentAmount: 3527500,
     expectedReturn: "15%",
     status: "active",
     endDate: "2025-05-01"
@@ -77,8 +77,8 @@ const recentTrips = [
     name: "Asian Paints",
     location: "India", 
     investors: 32,
-    targetAmount: 75000,
-    currentAmount: 75000,
+    targetAmount: 6225000,
+    currentAmount: 6225000,
     expectedReturn: "18%",
     status: "completed",
     endDate: "2025-05-15"
@@ -88,8 +88,8 @@ const recentTrips = [
     name: "Coca Cola",
     location: "Global",
     investors: 28,
-    targetAmount: 40000,
-    currentAmount: 35200,
+    targetAmount: 3320000,
+    currentAmount: 2921600,
     expectedReturn: "12%",
     status: "active",
     endDate: "2025-10-20"
@@ -98,22 +98,22 @@ const recentTrips = [
 
 // Analytics data for charts
 const investmentGrowthData = [
-  { month: 'Jan', totalValue: 45000, profit: 2100 },
-  { month: 'Feb', totalValue: 52000, profit: 2800 },
-  { month: 'Mar', totalValue: 61000, profit: 3200 },
-  { month: 'Apr', totalValue: 68000, profit: 3800 },
-  { month: 'May', totalValue: 78000, profit: 4500 },
-  { month: 'Jun', totalValue: 85000, profit: 5200 },
-  { month: 'Jul', totalValue: 94000, profit: 5900 },
-  { month: 'Aug', totalValue: 108000, profit: 6800 },
-  { month: 'Sep', totalValue: 125000, profit: 7600 }
+  { month: 'Jan', totalValue: 3735000, profit: 174300 },
+  { month: 'Feb', totalValue: 4316000, profit: 232400 },
+  { month: 'Mar', totalValue: 5063000, profit: 265600 },
+  { month: 'Apr', totalValue: 5644000, profit: 315400 },
+  { month: 'May', totalValue: 6474000, profit: 373500 },
+  { month: 'Jun', totalValue: 7055000, profit: 431600 },
+  { month: 'Jul', totalValue: 7802000, profit: 489700 },
+  { month: 'Aug', totalValue: 8964000, profit: 564400 },
+  { month: 'Sep', totalValue: 10375000, profit: 630800 }
 ];
 
 const portfolioDistribution = [
-  { name: 'Berger Paints', value: 35, amount: 87500, color: 'hsl(var(--primary))' },
-  { name: 'Asian Paints', value: 28, amount: 70000, color: 'hsl(var(--success))' },
-  { name: 'Coca Cola', value: 22, amount: 55000, color: 'hsl(var(--warning))' },
-  { name: 'Dynamic Cable', value: 15, amount: 37500, color: 'hsl(var(--destructive))' }
+  { name: 'Berger Paints', value: 35, amount: 7262500, color: 'hsl(var(--primary))' },
+  { name: 'Asian Paints', value: 28, amount: 5810000, color: 'hsl(var(--success))' },
+  { name: 'Coca Cola', value: 22, amount: 4565000, color: 'hsl(var(--warning))' },
+  { name: 'Dynamic Cable', value: 15, amount: 3112500, color: 'hsl(var(--destructive))' }
 ];
 
 const monthlyReturnsData = [
@@ -199,7 +199,7 @@ const Dashboard = () => {
                 <YAxis />
                 <Tooltip 
                   formatter={(value, name) => [
-                    `$${Number(value).toLocaleString()}`, 
+                    `₹${Number(value).toLocaleString()}`, 
                     name === 'totalValue' ? 'Total Value' : 'Profit'
                   ]}
                 />
@@ -247,7 +247,8 @@ const Dashboard = () => {
                 </Pie>
                 <Tooltip 
                   formatter={(value, name, props) => [
-                    `${value}% ($${props.payload.amount.toLocaleString()})`,
+                    `${value}% (₹${props.payload.amount.toLocaleString()})`,
+
                     'Share'
                   ]}
                 />
@@ -342,8 +343,8 @@ const Dashboard = () => {
                     {trip.location} • {trip.investors} investors
                   </p>
                   <div className="flex items-center gap-4 text-sm">
-                    <span>Target: ${trip.targetAmount.toLocaleString()}</span>
-                    <span>Raised: ${trip.currentAmount.toLocaleString()}</span>
+                    <span>Target: ₹{trip.targetAmount.toLocaleString()}</span>
+                    <span>Raised: ₹{trip.currentAmount.toLocaleString()}</span>
                     <span className="text-success">Return: {trip.expectedReturn}</span>
                   </div>
                 </div>
