@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TripMilestones } from "@/components/TripMilestones";
-import { 
-  MapPin, 
-  Calendar, 
-  DollarSign, 
+import {
+  MapPin,
+  Calendar,
+  DollarSign,
   TrendingUp,
   Users,
   Clock,
@@ -32,7 +32,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  X
+  X,
+  LayoutList,
+  LayoutGrid
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TripLockService } from "@/services/tripLockService";
@@ -129,7 +131,7 @@ const Trips = () => {
       .trip-grid { grid-template-columns: 1fr !important; }
     }
     @media (min-width: 1024px) {
-      .trip-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      .trip-grid { grid-template-columns: 1fr !important; }
     }
   `;
 
@@ -146,9 +148,9 @@ const Trips = () => {
   const { trips: availableTrips, loading: tripsLoading, error: tripsError } = useTripData();
 
   const [selectedTrips, setSelectedTrips] = useState<Set<number>>(new Set());
-  const [investmentAmounts, setInvestmentAmounts] = useState<Record<number, string>>({});
+  // const [investmentAmounts, setInvestmentAmounts] = useState<Record<number, string>>({});
   const [isInvesting, setIsInvesting] = useState(false);
-  const [bulkInvestmentAmount, setBulkInvestmentAmount] = useState("");
+  // const [bulkInvestmentAmount, setBulkInvestmentAmount] = useState("");
 
   // Trip locking and payment states
   const [lockedTrips, setLockedTrips] = useState<Set<number>>(new Set());
@@ -176,6 +178,9 @@ const Trips = () => {
     tripName: '',
     dateRange: 'all'
   });
+
+  // Common compact view toggle
+  const [compactView, setCompactView] = useState(false);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -290,18 +295,18 @@ const Trips = () => {
       setSelectedTrips(newSelected);
 
       // Remove investment amount when unchecked
-      const newAmounts = { ...investmentAmounts };
-      delete newAmounts[tripId];
-      setInvestmentAmounts(newAmounts);
+      // const newAmounts = { ...investmentAmounts };
+      // delete newAmounts[tripId];
+      // setInvestmentAmounts(newAmounts);
     }
   };
 
-  const handleAmountChange = (tripId: number, amount: string) => {
-    setInvestmentAmounts(prev => ({
-      ...prev,
-      [tripId]: amount
-    }));
-  };
+  // const handleAmountChange = (tripId: number, amount: string) => {
+  //   setInvestmentAmounts(prev => ({
+  //     ...prev,
+  //     [tripId]: amount
+  //   }));
+  // };
 
   const handleInvestInSelected = async () => {
     if (selectedTrips.size === 0) {
@@ -314,19 +319,19 @@ const Trips = () => {
     }
 
     // Validate amounts - check if any trip has no amount set
-    const invalidAmounts = Array.from(selectedTrips).filter(tripId => {
-      const amount = parseFloat(investmentAmounts[tripId] || "0");
-      return amount === 0; // Only require some amount to be entered, minimum will be enforced during processing
-    });
+    // const invalidAmounts = Array.from(selectedTrips).filter(tripId => {
+    //   const amount = parseFloat(investmentAmounts[tripId] || "0");
+    //   return amount === 0; // Only require some amount to be entered, minimum will be enforced during processing
+    // });
 
-    if (invalidAmounts.length > 0) {
-      toast({
-        title: "Invalid Investment Amounts",
-        description: "Please enter valid amounts for all selected trips",
-        variant: "destructive"
-      });
-      return;
-    }
+    // if (invalidAmounts.length > 0) {
+    //   toast({
+    //     title: "Invalid Investment Amounts",
+    //     description: "Please enter valid amounts for all selected trips",
+    //     variant: "destructive"
+    //   });
+    //   return;
+    // }
 
     setIsInvesting(true);
 
@@ -335,14 +340,15 @@ const Trips = () => {
       const newReservationIds: Record<number, string> = {};
 
       for (const tripId of selectedTrips) {
-        const effectiveAmount = getEffectiveInvestmentAmount(tripId);
+        const trip = availableStatusTrips.find(t => t.id === tripId);
+        const effectiveAmount = trip?.targetAmount || 0; // Invest full trip amount
 
         // Verify trip is still available
         if (!TripLockService.isTripAvailable(tripId, currentUserId)) {
           throw new Error(`Trip ${tripId} is no longer available`);
         }
 
-        // Create reservation with effective amount (minimum applied if needed)
+        // Create reservation with full trip amount
         const reservationResult = TripLockService.createReservation(tripId, currentUserId, effectiveAmount);
 
         if (!reservationResult.success) {
@@ -380,7 +386,7 @@ const Trips = () => {
 
       // Reset selections
       setSelectedTrips(new Set());
-      setInvestmentAmounts({});
+      // setInvestmentAmounts({});
       setReservationIds({});
       setProcessingTrips(new Set());
 
@@ -405,27 +411,25 @@ const Trips = () => {
 
   const getTotalInvestment = () => {
     return Array.from(selectedTrips).reduce((sum, tripId) => {
-      const amount = parseFloat(investmentAmounts[tripId] || "0");
       const trip = availableStatusTrips.find(t => t.id === tripId);
-      const minAmount = trip?.minInvestment || 0;
-      const effectiveAmount = Math.max(amount, minAmount);
+      const effectiveAmount = trip?.targetAmount || 0; // Full trip amount
       return sum + effectiveAmount;
     }, 0);
   };
 
-  const getEffectiveInvestmentAmount = (tripId: number) => {
-    const amount = parseFloat(investmentAmounts[tripId] || "0");
-    const trip = availableStatusTrips.find(t => t.id === tripId);
-    const minAmount = trip?.minInvestment || 0;
-    return Math.max(amount, minAmount);
-  };
+  // const getEffectiveInvestmentAmount = (tripId: number) => {
+  //   const amount = parseFloat(investmentAmounts[tripId] || "0");
+  //   const trip = availableStatusTrips.find(t => t.id === tripId);
+  //   const minAmount = trip?.minInvestment || 0;
+  //   return Math.max(amount, minAmount);
+  // };
 
-  const isAmountBelowMinimum = (tripId: number) => {
-    const amount = parseFloat(investmentAmounts[tripId] || "0");
-    const trip = availableStatusTrips.find(t => t.id === tripId);
-    const minAmount = trip?.minInvestment || 0;
-    return amount > 0 && amount < minAmount;
-  };
+  // const isAmountBelowMinimum = (tripId: number) => {
+  //   const amount = parseFloat(investmentAmounts[tripId] || "0");
+  //   const trip = availableStatusTrips.find(t => t.id === tripId);
+  //   const minAmount = trip?.minInvestment || 0;
+  //   return amount > 0 && amount < minAmount;
+  // };
 
   // Helper functions for trip status
   const isTripLocked = (tripId: number) => {
@@ -703,7 +707,7 @@ const Trips = () => {
       setSelectedTrips(new Set());
       setInvestmentAmounts({});
       setReservationIds({});
-      setBulkInvestmentAmount("");
+      // setBulkInvestmentAmount("");
     }
   };
 
@@ -721,39 +725,39 @@ const Trips = () => {
     return selectableTrips.some(trip => selectedTrips.has(trip.id));
   };
 
-  // Bulk investment amount handling
-  const handleBulkAmountChange = (amount: string) => {
-    setBulkInvestmentAmount(amount);
+  // Bulk investment amount handling - COMMENTED OUT
+  // const handleBulkAmountChange = (amount: string) => {
+  //   // setBulkInvestmentAmount(amount);
 
-    if (amount && parseFloat(amount) > 0) {
-      const newAmounts: Record<number, string> = { ...investmentAmounts };
+  //   if (amount && parseFloat(amount) > 0) {
+  //     const newAmounts: Record<number, string> = { ...investmentAmounts };
 
-      selectedTrips.forEach(tripId => {
-        if (!investmentAmounts[tripId]) {
-          newAmounts[tripId] = amount;
-        }
-      });
+  //     selectedTrips.forEach(tripId => {
+  //       if (!investmentAmounts[tripId]) {
+  //         newAmounts[tripId] = amount;
+  //       }
+  //     });
 
-      setInvestmentAmounts(newAmounts);
-    }
-  };
+  //     setInvestmentAmounts(newAmounts);
+  //   }
+  // };
 
-  const applyBulkAmount = () => {
-    if (bulkInvestmentAmount && parseFloat(bulkInvestmentAmount) > 0) {
-      const newAmounts: Record<number, string> = {};
+  // const applyBulkAmount = () => {
+  //   if (bulkInvestmentAmount && parseFloat(bulkInvestmentAmount) > 0) {
+  //     const newAmounts: Record<number, string> = {};
 
-      selectedTrips.forEach(tripId => {
-        newAmounts[tripId] = bulkInvestmentAmount;
-      });
+  //     selectedTrips.forEach(tripId => {
+  //       newAmounts[tripId] = bulkInvestmentAmount;
+  //     });
 
-      setInvestmentAmounts(prev => ({ ...prev, ...newAmounts }));
+  //     setInvestmentAmounts(prev => ({ ...prev, ...newAmounts }));
 
-      toast({
-        title: "Amounts Applied",
-        description: `₹${parseFloat(bulkInvestmentAmount).toLocaleString()} applied to ${selectedTrips.size} selected trips`,
-      });
-    }
-  };
+  //     toast({
+  //       title: "Amounts Applied",
+  //       description: `₹${parseFloat(bulkInvestmentAmount).toLocaleString()} applied to ${selectedTrips.size} selected trips`,
+  //     });
+  //   }
+  // };
 
   // My Investments filtering and pagination logic
   const filteredMyInvestments = myInvestments.filter(investment => {
@@ -837,16 +841,11 @@ const Trips = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => setCompactView(!compactView)}
             className="flex items-center gap-2"
           >
-            <Filter className="h-4 w-4" />
-            Filters
-            {getActiveFilterCount() > 0 && (
-              <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
-                {getActiveFilterCount()}
-              </Badge>
-            )}
+            {compactView ? <LayoutGrid className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
+            {compactView ? 'Full View' : 'Compact View'}
           </Button>
           <div className="flex items-center space-x-2">
             <TrendingUp className="h-4 w-4 text-success" />
@@ -1033,6 +1032,24 @@ const Trips = () => {
           </TabsList>
 
           <TabsContent value="available" className="space-y-4">
+          {/* Available Trips Filters */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Available Trips</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {getActiveFilterCount() > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
+                  {getActiveFilterCount()}
+                </Badge>
+              )}
+            </Button>
+          </div>
           {/* Select All Controls */}
           <Card className="p-4 bg-muted/20">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
@@ -1062,7 +1079,8 @@ const Trips = () => {
                 )}
               </div>
 
-              {/* Bulk Investment Amount Input */}
+              {/* Bulk Investment Amount Input - REMOVED */}
+              {/*
               {selectedTrips.size > 0 && (
                 <div className="flex items-center gap-2">
                   <Label htmlFor="bulk-amount" className="text-sm whitespace-nowrap">
@@ -1086,6 +1104,7 @@ const Trips = () => {
                   </Button>
                 </div>
               )}
+              */}
             </div>
           </Card>
           {/* Enhanced Investment Summary Card */}
@@ -1113,7 +1132,8 @@ const Trips = () => {
                   </div>
                 </div>
 
-                {/* Minimum Amount Warnings */}
+                {/* Minimum Amount Warnings - REMOVED */}
+                {/*
                 {Array.from(selectedTrips).some(tripId => isAmountBelowMinimum(tripId)) && (
                   <div className="p-3 bg-warning/10 border border-warning/20 rounded-md">
                     <div className="flex items-start gap-2">
@@ -1127,6 +1147,7 @@ const Trips = () => {
                     </div>
                   </div>
                 )}
+                */}
 
                 <div className="flex items-center justify-between pt-2 border-t">
                   <div className="text-sm text-muted-foreground">
@@ -1152,21 +1173,81 @@ const Trips = () => {
             </Card>
           )}
 
-          <div className="grid gap-2 grid-cols-1 lg:grid-cols-2 trip-grid">
-            {currentTrips.map((trip) => {
+          {compactView ? (
+            /* Compact View - Multiple trips per row */
+            <div className="space-y-2">
+              {Array.from({ length: Math.ceil(currentTrips.length / 3) }, (_, rowIndex) => (
+                <div key={rowIndex} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {currentTrips.slice(rowIndex * 3, (rowIndex + 1) * 3).map((trip) => {
+                    const lockStatus = getTripLockStatus(trip.id);
+                    const isLocked = lockStatus.status === 'locked';
+                    const isProcessing = lockStatus.status === 'processing';
+                    const isReserved = lockStatus.status === 'reserved';
+
+                    return (
+                      <Card key={trip.id} className={`p-3 transition-all ${
+                        selectedTrips.has(trip.id) ? 'ring-2 ring-primary/50 bg-primary/5' : ''
+                      } ${isLocked ? 'opacity-60 bg-muted/30' : ''} ${
+                        isProcessing ? 'ring-2 ring-warning/50 bg-warning/5' : ''
+                      }`}>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedTrips.has(trip.id)}
+                            onCheckedChange={(checked) => handleTripSelection(trip.id, !!checked)}
+                            disabled={trip.status === "completed" || isLocked || isProcessing}
+                            className="flex-shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="font-semibold text-sm truncate">{trip.name}</h3>
+                              {getStatusBadge(trip.status)}
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">{trip.location}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Target: ₹{(trip.targetAmount / 1000).toFixed(0)}K
+                            </div>
+                            {/* Investment Amount Input - REMOVED */}
+                            {/*
+                            {selectedTrips.has(trip.id) && (
+                              <div className="mt-2">
+                                <Input
+                                  type="number"
+                                  placeholder={`Min: ₹${trip.minInvestment}`}
+                                  value={investmentAmounts[trip.id] || ""}
+                                  onChange={(e) => handleAmountChange(trip.id, e.target.value)}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                            )}
+                            */}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Full View - One trip per row */
+            <div className="grid gap-2 grid-cols-1 trip-grid">
+              {currentTrips.map((trip) => {
               const lockStatus = getTripLockStatus(trip.id);
               const isLocked = lockStatus.status === 'locked';
               const isProcessing = lockStatus.status === 'processing';
               const isReserved = lockStatus.status === 'reserved';
 
-              const isBelowMinimum = selectedTrips.has(trip.id) && isAmountBelowMinimum(trip.id);
+              // const isBelowMinimum = selectedTrips.has(trip.id) && isAmountBelowMinimum(trip.id);
 
               return (
               <Card key={trip.id} className={`overflow-hidden transition-all trip-card ${
                 selectedTrips.has(trip.id) ? 'ring-2 ring-primary/50 bg-primary/5' : ''
               } ${isLocked ? 'opacity-60 bg-muted/30' : ''} ${
                 isProcessing ? 'ring-2 ring-warning/50 bg-warning/5' : ''
-              } ${isBelowMinimum ? 'ring-2 ring-amber-400/50 bg-amber-50/50' : ''}`}>
+              }`}>
                 <CardHeader className="pb-2 p-3">
                   <div className="space-y-2">
                     <div className="flex items-start gap-2">
@@ -1254,7 +1335,8 @@ const Trips = () => {
                     </div>
                   )}
 
-                  {/* Investment Amount Input - Compact */}
+                  {/* Investment Amount Input - REMOVED */}
+                  {/*
                   {selectedTrips.has(trip.id) && (
                     <div className={`p-2 rounded ${isBelowMinimum ? 'bg-amber-50 border border-amber-200' : 'bg-muted/50'}`}>
                       <div className="flex items-center justify-between mb-1">
@@ -1283,6 +1365,7 @@ const Trips = () => {
                       )}
                     </div>
                   )}
+                  */}
 
                   {/* Progress Section */}
                   <div className="space-y-2">
@@ -1300,26 +1383,23 @@ const Trips = () => {
                     />
                   </div>
 
-                  {/* Key Details Grid - Single Row */}
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t text-xs">
+                  {/* Trip Details - Single Row */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t text-xs">
                     <div>
-                      <span className="text-muted-foreground">Min Investment</span>
-                      <p className="font-medium">₹{(trip.minInvestment / 1000).toFixed(0)}K</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Max Investment</span>
-                      <p className="font-medium">₹{(trip.maxInvestment / 1000).toFixed(0)}K</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Total Amount</span>
+                      <span className="text-muted-foreground">Trip Amount</span>
                       <p className="font-medium">₹{(trip.targetAmount / 1000).toFixed(0)}K</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Progress</span>
+                      <p className="font-medium">{getProgress(trip.currentAmount, trip.targetAmount)}%</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               );
             })}
-          </div>
+            </div>
+          )}
 
           {/* Pagination Controls */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1413,28 +1493,20 @@ const Trips = () => {
           {/* My Investments Header */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">My Investments</h2>
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMyInvestmentsFilters(!showMyInvestmentsFilters)}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-                {getMyInvestmentsActiveFilterCount() > 0 && (
-                  <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
-                    {getMyInvestmentsActiveFilterCount()}
-                  </Badge>
-                )}
-              </Button>
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-success" />
-                <span className="text-sm text-muted-foreground">
-                  {filteredMyInvestments.length} of {myInvestments.length} investments
-                </span>
-              </div>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMyInvestmentsFilters(!showMyInvestmentsFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {getMyInvestmentsActiveFilterCount() > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
+                  {getMyInvestmentsActiveFilterCount()}
+                </Badge>
+              )}
+            </Button>
           </div>
 
           {/* My Investments Filter Panel */}
@@ -1503,8 +1575,47 @@ const Trips = () => {
             </Card>
           )}
 
-          <div className="grid gap-2 grid-cols-1 lg:grid-cols-2 trip-grid">
-            {currentMyInvestments.map((investment) => (
+          {compactView ? (
+            /* Compact View - Multiple investments per row */
+            <div className="space-y-2">
+              {Array.from({ length: Math.ceil(currentMyInvestments.length / 3) }, (_, rowIndex) => (
+                <div key={rowIndex} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {currentMyInvestments.slice(rowIndex * 3, (rowIndex + 1) * 3).map((investment) => (
+                    <Card key={investment.id} className="p-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-sm truncate">{investment.tripName}</h3>
+                          {getStatusBadge(investment.status)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          From: {investment.tripStartDate} to {investment.expectedEndDate}
+                        </div>
+                        <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-3" : "grid-cols-2"}`}>
+                          <div>
+                            <span className="text-muted-foreground">Amount</span>
+                            <p className="font-semibold">₹{(investment.amount / 1000).toFixed(0)}K</p>
+                          </div>
+                          {investment.status === "completed" && (
+                            <div>
+                              <span className="text-muted-foreground">Profit</span>
+                              <p className="font-semibold text-success">₹{(investment.profitCredited / 1000).toFixed(0)}K</p>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-muted-foreground">Progress</span>
+                            <p className="font-semibold">{investment.progress}%</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Full View - One investment per row */
+            <div className="grid gap-2 grid-cols-1 trip-grid">
+              {currentMyInvestments.map((investment) => (
               <Card key={investment.id} className="overflow-hidden trip-card">
                 <CardHeader className="pb-2 p-3">
                   <div className="space-y-2">
@@ -1672,7 +1783,8 @@ const Trips = () => {
                 </CardContent>
               </Card>
             ))}
-          </div>
+            </div>
+          )}
 
           {/* My Investments Pagination Controls */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
