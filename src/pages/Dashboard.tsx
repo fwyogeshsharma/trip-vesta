@@ -45,7 +45,7 @@ const metrics = [
     icon: MapPin,
   },
   {
-    title: "Total Profit",
+    title: "Total Investor Profit",
     value: "₹3,754,173",
     change: "+20.1% from last month",
     changeType: "positive" as const,

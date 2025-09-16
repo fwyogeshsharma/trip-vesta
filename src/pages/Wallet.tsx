@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Wallet as WalletIcon,
   CreditCard,
@@ -17,7 +18,8 @@ import {
   Shield,
   Edit,
   X,
-  Loader2
+  Loader2,
+  Flag
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PaymentService } from "@/services/paymentService";
@@ -39,6 +41,7 @@ const Wallet = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<number | null>(null);
+  const [investmentPermission, setInvestmentPermission] = useState(true);
 
   // Add account form
   const [newAccountData, setNewAccountData] = useState({
@@ -361,7 +364,7 @@ const Wallet = () => {
   return (
     <div className="flex-1 space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Wallet Management</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Aman's Wallet</h1>
         <div className="flex items-center space-x-2">
           <Shield className="h-4 w-4 text-success" />
           <span className="text-sm text-muted-foreground">Secure</span>
@@ -377,6 +380,9 @@ const Wallet = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{walletData.balance.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Unused amount will be credited to your account in monthly cycle
+            </p>
           </CardContent>
         </Card>
 
@@ -418,6 +424,38 @@ const Wallet = () => {
         </TabsList>
 
         <TabsContent value="manage" className="space-y-4">
+          {/* RR Investment Permission Flag */}
+          <Card className={`border-primary/20 ${investmentPermission ? 'bg-primary/5' : 'bg-muted/30'}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <Flag className={`h-5 w-5 ${investmentPermission ? 'text-primary' : 'text-muted-foreground'}`} />
+                <div className="flex-1">
+                  <h3 className={`font-semibold ${investmentPermission ? 'text-primary' : 'text-muted-foreground'}`}>
+                    Investment Permission
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Allow RR to invest on behalf of me using wallet funds
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge
+                    variant="outline"
+                    className={investmentPermission
+                      ? "bg-success/10 text-success border-success/20"
+                      : "bg-destructive/10 text-destructive border-destructive/20"
+                    }
+                  >
+                    {investmentPermission ? "Enabled" : "Disabled"}
+                  </Badge>
+                  <Switch
+                    checked={investmentPermission}
+                    onCheckedChange={setInvestmentPermission}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-6 md:grid-cols-2">
             {/* Add Funds */}
             <Card>

@@ -4,14 +4,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  History as HistoryIcon, 
-  TrendingUp, 
+import {
+  History as HistoryIcon,
+  TrendingUp,
   TrendingDown,
   Filter,
   Search,
   Calendar,
-  DollarSign
+  DollarSign,
+  CalendarRange
 } from "lucide-react";
 
 // Mock transaction data
@@ -90,6 +91,8 @@ const History = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -148,11 +151,16 @@ const History = () => {
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (transaction.tripName && transaction.tripName.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     const matchesType = filterType === "all" || transaction.type === filterType;
     const matchesStatus = filterStatus === "all" || transaction.status === filterStatus;
-    
-    return matchesSearch && matchesType && matchesStatus;
+
+    // Date range filtering
+    const transactionDate = new Date(transaction.date);
+    const matchesStartDate = !startDate || transactionDate >= new Date(startDate);
+    const matchesEndDate = !endDate || transactionDate <= new Date(endDate);
+
+    return matchesSearch && matchesType && matchesStatus && matchesStartDate && matchesEndDate;
   });
 
   const totalStats = {
@@ -232,43 +240,87 @@ const History = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search transactions..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search transactions..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="md:w-48">
+                  <SelectValue placeholder="Transaction Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="investment">Investment</SelectItem>
+                  <SelectItem value="profit">Profit</SelectItem>
+                  <SelectItem value="deposit">Deposit</SelectItem>
+                  <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="md:w-48">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date Range Filter */}
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Date Range:</span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 items-center">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-muted-foreground">From:</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-auto"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-muted-foreground">To:</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-auto"
+                  />
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="text-xs"
+                >
+                  Clear Dates
+                </Button>
               </div>
             </div>
-            
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="md:w-48">
-                <SelectValue placeholder="Transaction Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="investment">Investment</SelectItem>
-                <SelectItem value="profit">Profit</SelectItem>
-                <SelectItem value="deposit">Deposit</SelectItem>
-                <SelectItem value="withdrawal">Withdrawal</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="md:w-48">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -321,6 +373,8 @@ const History = () => {
                   setSearchTerm("");
                   setFilterType("all");
                   setFilterStatus("all");
+                  setStartDate("");
+                  setEndDate("");
                 }}>
                   Clear Filters
                 </Button>

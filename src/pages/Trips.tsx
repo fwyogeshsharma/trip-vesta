@@ -52,6 +52,7 @@ const myInvestments = [
     status: "active",
     progress: 75,
     daysRemaining: 47,
+    profitCredited: 0, // Active trips don't have profit yet
     milestones: [
       { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-20" },
       { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-25" },
@@ -73,6 +74,7 @@ const myInvestments = [
     status: "completed",
     progress: 100,
     daysRemaining: 0,
+    profitCredited: 74700, // 18% profit on 415000
     milestones: [
       { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-08-25" },
       { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-08-30" },
@@ -94,6 +96,7 @@ const myInvestments = [
     status: "active",
     progress: 60,
     daysRemaining: 61,
+    profitCredited: 0, // Active trips don't have profit yet
     milestones: [
       { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-01" },
       { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-08" },
@@ -1520,18 +1523,24 @@ const Trips = () => {
                     </div>
 
                     <div className="text-xs text-muted-foreground">
-                      Invested: {investment.investedDate} • From: {investment.tripStartDate} to {investment.expectedEndDate}
+                      From: {investment.tripStartDate} to {investment.expectedEndDate}
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="p-3 pt-0 space-y-3">
                   {/* Investment Overview - Compact Grid */}
-                  <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-4" : "grid-cols-3"}`}>
                     <div>
-                      <span className="text-muted-foreground">Amount</span>
+                      <span className="text-muted-foreground">Amount Invested</span>
                       <p className="font-semibold">₹{(investment.amount / 1000).toFixed(0)}K</p>
                     </div>
+                    {investment.status === "completed" && (
+                      <div>
+                        <span className="text-muted-foreground">Profit Credited</span>
+                        <p className="font-semibold text-success">₹{(investment.profitCredited / 1000).toFixed(0)}K</p>
+                      </div>
+                    )}
                     <div>
                       <span className="text-muted-foreground">Progress</span>
                       <p className="font-semibold">{investment.progress}%</p>
