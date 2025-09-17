@@ -70,7 +70,7 @@ const Wallet = () => {
   const [bankAccounts, setBankAccounts] = useState([
     {
       id: 1,
-      bank: "Chase Bank",
+      bank: "State Bank of India",
       accountNumber: "****1234",
       type: "Checking",
       verified: true,
@@ -78,9 +78,25 @@ const Wallet = () => {
     },
     {
       id: 2,
-      bank: "Bank of America",
+      bank: "HDFC Bank",
       accountNumber: "****5678",
       type: "Savings",
+      verified: true,
+      active: false
+    },
+    {
+      id: 3,
+      bank: "Chase Bank",
+      accountNumber: "****3456",
+      type: "Business",
+      verified: true,
+      active: false
+    },
+    {
+      id: 4,
+      bank: "Bank of America",
+      accountNumber: "****7890",
+      type: "Checking",
       verified: true,
       active: false
     }
