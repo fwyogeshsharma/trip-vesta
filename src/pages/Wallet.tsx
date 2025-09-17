@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PaymentService } from "@/services/paymentService";
+import { useWallet } from "@/contexts/WalletContext";
 
 // Declare Razorpay global interface
 declare global {
@@ -33,6 +34,7 @@ declare global {
 
 const Wallet = () => {
   const { toast } = useToast();
+  const { walletData, addToBalance, withdrawFromBalance } = useWallet();
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -57,13 +59,13 @@ const Wallet = () => {
     type: "Checking"
   });
 
-  // Dynamic wallet data
-  const [walletData, setWalletData] = useState({
-    balance: 1307250.00,
-    totalInvested: 3754090.00,
-    totalWithdrawn: 705500.00,
-    profitEarned: 562740.00
-  });
+  // Dynamic wallet data - now using context
+  // const [walletData, setWalletData] = useState({
+  //   balance: 1307250.00,
+  //   totalInvested: 3754090.00,
+  //   totalWithdrawn: 705500.00,
+  //   profitEarned: 562740.00
+  // });
 
   const [bankAccounts, setBankAccounts] = useState([
     {
@@ -215,10 +217,7 @@ const Wallet = () => {
 
       if (verificationResult.success) {
         // Update wallet balance only after successful verification
-        setWalletData(prev => ({
-          ...prev,
-          balance: prev.balance + amountToAdd
-        }));
+        addToBalance(amountToAdd);
 
         // Save transaction details
         await PaymentService.saveTransaction({
@@ -263,27 +262,21 @@ const Wallet = () => {
 
     const amountToWithdraw = parseFloat(withdrawAmount);
 
-    if (amountToWithdraw > walletData.balance) {
+    const success = withdrawFromBalance(amountToWithdraw);
+
+    if (success) {
+      toast({
+        title: "Withdrawal Processed",
+        description: `₹${amountToWithdraw.toLocaleString()} has been withdrawn from your wallet`,
+      });
+      setWithdrawAmount("");
+    } else {
       toast({
         title: "Insufficient Balance",
         description: "You don't have enough balance for this withdrawal",
         variant: "destructive"
       });
-      return;
     }
-
-    // Update wallet balance and total withdrawn
-    setWalletData(prev => ({
-      ...prev,
-      balance: prev.balance - amountToWithdraw,
-      totalWithdrawn: prev.totalWithdrawn + amountToWithdraw
-    }));
-
-    toast({
-      title: "Withdrawal Processed",
-      description: `₹${amountToWithdraw.toLocaleString()} has been withdrawn from your wallet`,
-    });
-    setWithdrawAmount("");
   };
 
   const handleAddAccount = () => {

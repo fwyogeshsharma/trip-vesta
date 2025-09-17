@@ -40,6 +40,8 @@ import { useToast } from "@/hooks/use-toast";
 import { TripLockService } from "@/services/tripLockService";
 import { useTripData } from "@/hooks/useTripData";
 import { TripData } from "@/utils/excelReader";
+import { InvestmentStorage, InvestmentData } from "@/utils/investmentStorage";
+import { useWallet } from "@/contexts/WalletContext";
 
 // Trip data loaded from Excel file
 
@@ -113,6 +115,8 @@ const myInvestments = [
 ];
 
 const Trips = () => {
+  const { walletData, deductFromBalance } = useWallet();
+
   // Add custom styles for responsive trip cards
   const tripCardStyles = `
     .trip-card {
@@ -182,6 +186,9 @@ const Trips = () => {
   // Common compact view toggle
   const [compactView, setCompactView] = useState(false);
 
+  // Dynamic investments from localStorage
+  const [userInvestments, setUserInvestments] = useState<InvestmentData[]>([]);
+
   // Filter state
   const [filters, setFilters] = useState({
     status: 'all',
@@ -195,6 +202,23 @@ const Trips = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showMyInvestmentsFilters, setShowMyInvestmentsFilters] = useState(false);
+
+  // Load user investments from localStorage on mount
+  useEffect(() => {
+    const loadInvestments = () => {
+      const investments = InvestmentStorage.getInvestments();
+      setUserInvestments(investments);
+
+      // Resume progress simulation for active investments
+      investments.forEach((investment) => {
+        if (investment.status === "active" && investment.progress < 100) {
+          simulateInvestmentProgress(investment.id, Math.random() * 5000); // Random delay 0-5s
+        }
+      });
+    };
+
+    loadInvestments();
+  }, []);
 
   // Update locked trips periodically
   useEffect(() => {
@@ -237,6 +261,87 @@ const Trips = () => {
 
   const getProgress = (current: number, target: number) => {
     return Math.round((current / target) * 100);
+  };
+
+  // Helper function to convert a trip to investment data
+  const createInvestmentFromTrip = (trip: TripData, investmentId: number): InvestmentData => {
+    const today = new Date().toISOString().split('T')[0];
+    const endDate = trip.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Default 90 days from now
+
+    return {
+      id: investmentId,
+      tripName: trip.name,
+      amount: trip.targetAmount,
+      investedDate: today,
+      tripStartDate: trip.startDate || today,
+      expectedEndDate: endDate,
+      status: "active",
+      progress: 0, // Start at 0%
+      daysRemaining: Math.ceil((new Date(endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+      profitCredited: 0,
+      originalTripId: trip.id,
+      milestones: [
+        { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed", date: today },
+        { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "current", date: today },
+        { id: 3, name: "Travel Arrangements", icon: Plane, status: "pending", date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { id: 4, name: "Accommodation Ready", icon: Building, status: "pending", date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { id: 5, name: "Service Delivery", icon: MapIcon, status: "pending", date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { id: 6, name: "Trip Completion", icon: CheckCircle, status: "pending", date: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { id: 7, name: "Invoice Processing", icon: FileText, status: "pending", date: new Date(Date.now() + 75 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+        { id: 8, name: "Returns Distributed", icon: DollarSign, status: "pending", date: endDate }
+      ]
+    };
+  };
+
+  // Simulate investment progress over time
+  const simulateInvestmentProgress = (investmentId: number, delay: number = 0) => {
+    setTimeout(() => {
+      const updateProgress = () => {
+        const currentInvestments = InvestmentStorage.getInvestments();
+        const investment = currentInvestments.find(inv => inv.id === investmentId);
+
+        if (investment && investment.progress < 100) {
+          // Increment progress by 5-15% randomly
+          const increment = Math.floor(Math.random() * 11) + 5; // 5-15
+          const newProgress = Math.min(100, investment.progress + increment);
+
+          InvestmentStorage.updateInvestmentProgress(investmentId, newProgress);
+
+          // Update local state
+          setUserInvestments(prev => prev.map(inv =>
+            inv.id === investmentId
+              ? { ...inv, progress: newProgress, status: newProgress >= 100 ? "completed" : "active" }
+              : inv
+          ));
+
+          // Continue updating if not complete
+          if (newProgress < 100) {
+            // Next update in 10-30 seconds
+            const nextInterval = (Math.floor(Math.random() * 21) + 10) * 1000;
+            setTimeout(updateProgress, nextInterval);
+          } else {
+            // Investment completed, calculate profit
+            const profit = Math.floor(investment.amount * 0.15); // 15% profit
+            InvestmentStorage.updateInvestmentProgress(investmentId, 100);
+
+            // Update with profit
+            setUserInvestments(prev => prev.map(inv =>
+              inv.id === investmentId
+                ? { ...inv, progress: 100, status: "completed", profitCredited: profit, daysRemaining: 0 }
+                : inv
+            ));
+
+            toast({
+              title: "Investment Completed!",
+              description: `Your investment in ${investment.tripName} is complete. Profit of ₹${profit.toLocaleString()} has been credited.`,
+            });
+          }
+        }
+      };
+
+      // Start the progress updates
+      updateProgress();
+    }, delay);
   };
 
   const handleTripSelection = async (tripId: number, checked: boolean) => {
@@ -333,6 +438,17 @@ const Trips = () => {
     //   return;
     // }
 
+    // Check if user has sufficient balance
+    const totalAmount = getTotalInvestment();
+    if (walletData.balance < totalAmount) {
+      toast({
+        title: "Insufficient Balance",
+        description: `You need ₹${totalAmount.toLocaleString()} but only have ₹${walletData.balance.toLocaleString()} in your wallet.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsInvesting(true);
 
     try {
@@ -372,12 +488,36 @@ const Trips = () => {
 
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Complete all reservations
-      for (const [tripId, reservationId] of Object.entries(newReservationIds)) {
-        TripLockService.completeReservation(reservationId, currentUserId);
+      // Deduct amount from wallet balance
+      const balanceDeducted = deductFromBalance(totalAmount);
+
+      if (!balanceDeducted) {
+        throw new Error("Failed to deduct amount from wallet balance");
       }
 
-      const totalAmount = getTotalInvestment();
+      // Complete all reservations and create investments
+      const newInvestments: InvestmentData[] = [];
+      let nextInvestmentId = Math.max(0, ...userInvestments.map(inv => inv.id)) + 1;
+
+      for (const [tripId, reservationId] of Object.entries(newReservationIds)) {
+        TripLockService.completeReservation(reservationId, currentUserId);
+
+        // Find the trip and create investment data
+        const trip = availableStatusTrips.find(t => t.id === parseInt(tripId));
+        if (trip) {
+          const investment = createInvestmentFromTrip(trip, nextInvestmentId++);
+          InvestmentStorage.addInvestment(investment);
+          newInvestments.push(investment);
+        }
+      }
+
+      // Update local state with new investments
+      setUserInvestments(prev => [...prev, ...newInvestments]);
+
+      // Start progress simulation for new investments
+      newInvestments.forEach((investment, index) => {
+        simulateInvestmentProgress(investment.id, index * 1000); // Stagger the start times
+      });
 
       toast({
         title: "Investment Successful",
@@ -499,8 +639,10 @@ const Trips = () => {
   };
 
   // Filter trips based on selected criteria and only show available/running/active trips
+  // Also exclude trips that have already been invested in
   const availableStatusTrips = availableTrips.filter(trip =>
-    ['available', 'running', 'active'].includes(trip.status.toLowerCase())
+    ['available', 'running', 'active'].includes(trip.status.toLowerCase()) &&
+    !InvestmentStorage.isTripInvested(trip.id)
   ).map(trip => ({
     ...trip,
     // Generate random investor count between 1-5 for display
@@ -759,8 +901,11 @@ const Trips = () => {
   //   }
   // };
 
+  // Combine static demo investments with user's dynamic investments
+  const allInvestments = [...myInvestments, ...userInvestments];
+
   // My Investments filtering and pagination logic
-  const filteredMyInvestments = myInvestments.filter(investment => {
+  const filteredMyInvestments = allInvestments.filter(investment => {
     // Status filter
     if (myInvestmentsFilters.status !== 'all' && investment.status !== myInvestmentsFilters.status) return false;
 
@@ -1117,7 +1262,7 @@ const Trips = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Selected Trips</p>
                     <p className="text-xl font-bold">{selectedTrips.size}</p>
@@ -1127,10 +1272,36 @@ const Trips = () => {
                     <p className="text-xl font-bold">₹{getTotalInvestment().toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Avg. per Trip</p>
-                    <p className="text-xl font-bold">₹{selectedTrips.size > 0 ? Math.round(getTotalInvestment() / selectedTrips.size).toLocaleString() : '0'}</p>
+                    <p className="text-xs text-muted-foreground">Available Balance</p>
+                    <p className={`text-xl font-bold ${walletData.balance >= getTotalInvestment() ? 'text-success' : 'text-destructive'}`}>
+                      ₹{walletData.balance.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Remaining Balance</p>
+                    <p className={`text-xl font-bold ${walletData.balance >= getTotalInvestment() ? 'text-success' : 'text-destructive'}`}>
+                      ₹{Math.max(0, walletData.balance - getTotalInvestment()).toLocaleString()}
+                    </p>
                   </div>
                 </div>
+
+                {/* Insufficient Balance Warning */}
+                {walletData.balance < getTotalInvestment() && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <div className="flex items-start gap-2">
+                      <Timer className="h-4 w-4 text-destructive mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-destructive">Insufficient Wallet Balance</p>
+                        <p className="text-muted-foreground mt-1">
+                          You need ₹{(getTotalInvestment() - walletData.balance).toLocaleString()} more in your wallet to complete this investment.
+                          <span className="text-primary cursor-pointer hover:underline ml-2">
+                            Add funds to wallet →
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Minimum Amount Warnings - REMOVED */}
                 {/*
@@ -1155,7 +1326,7 @@ const Trips = () => {
                   </div>
                   <Button
                     onClick={handleInvestInSelected}
-                    disabled={isInvesting || getTotalInvestment() === 0}
+                    disabled={isInvesting || getTotalInvestment() === 0 || walletData.balance < getTotalInvestment()}
                     size="lg"
                     className="min-w-32"
                   >
