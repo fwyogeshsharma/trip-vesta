@@ -39,26 +39,26 @@ export function InvestmentSidebar() {
   };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center w-full transition-colors ${
+    `flex items-center w-full ${
       isActive
         ? "bg-primary text-primary-foreground font-medium"
-        : "text-black hover:bg-accent hover:text-black"
+        : "text-black dark:text-white"
     }`;
 
   return (
-    <Sidebar className="w-64 [&_*]:!text-black" collapsible="none">
+    <Sidebar className="w-64" collapsible="none">
       <SidebarContent>
         <div className="p-4">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg text-black">InvestPortal</span>
+            <span className="font-bold text-lg text-black dark:text-white">InvestPortal</span>
           </div>
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-black">Investment</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-black dark:text-white">Investment</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {userItems.map((item) => (
@@ -76,7 +76,7 @@ export function InvestmentSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-black">Management</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-black dark:text-white">Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {adminItems.map((item) => (

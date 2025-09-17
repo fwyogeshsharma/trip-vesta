@@ -31,10 +31,12 @@ import {
   Upload
 } from "lucide-react";
 import { KYCStorage } from "@/utils/kycStorage";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
 
   // Get KYC status
   const kycData = KYCStorage.getKYCData();
@@ -68,7 +70,6 @@ const Settings = () => {
       loginAlerts: true
     },
     preferences: {
-      darkMode: false,
       compactView: false,
       autoLogout: true,
       dataExport: true,
@@ -158,7 +159,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl bg-background text-foreground min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -438,198 +439,6 @@ const Settings = () => {
                   onCheckedChange={(checked) => updateSetting('notifications', 'soundEnabled', checked)}
                 />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Security Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Security Settings
-            </CardTitle>
-            <CardDescription>
-              Manage your account security and privacy settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="two-factor" className="text-sm font-medium">
-                  Two-Factor Authentication
-                </Label>
-                <p className="text-xs text-muted-foreground">Add an extra layer of security to your account</p>
-              </div>
-              <Switch
-                id="two-factor"
-                checked={userSettings.security.twoFactorEnabled}
-                onCheckedChange={(checked) => updateSetting('security', 'twoFactorEnabled', checked)}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="biometric" className="text-sm font-medium">
-                  Biometric Authentication
-                </Label>
-                <p className="text-xs text-muted-foreground">Use fingerprint or face recognition</p>
-              </div>
-              <Switch
-                id="biometric"
-                checked={userSettings.security.biometricEnabled}
-                onCheckedChange={(checked) => updateSetting('security', 'biometricEnabled', checked)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="session-timeout">Session Timeout (minutes)</Label>
-              <Select
-                value={userSettings.security.sessionTimeout}
-                onValueChange={(value) => updateSetting('security', 'sessionTimeout', value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 minutes</SelectItem>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="60">1 hour</SelectItem>
-                  <SelectItem value="120">2 hours</SelectItem>
-                  <SelectItem value="never">Never</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="login-alerts" className="text-sm font-medium">
-                  Login Alerts
-                </Label>
-                <p className="text-xs text-muted-foreground">Get notified of new device logins</p>
-              </div>
-              <Switch
-                id="login-alerts"
-                checked={userSettings.security.loginAlerts}
-                onCheckedChange={(checked) => updateSetting('security', 'loginAlerts', checked)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* App Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              App Preferences
-            </CardTitle>
-            <CardDescription>
-              Customize your app experience
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {userSettings.preferences.darkMode ?
-                  <Moon className="h-4 w-4 text-muted-foreground" /> :
-                  <Sun className="h-4 w-4 text-muted-foreground" />
-                }
-                <div>
-                  <Label htmlFor="dark-mode" className="text-sm font-medium">
-                    Dark Mode
-                  </Label>
-                  <p className="text-xs text-muted-foreground">Use dark theme for the interface</p>
-                </div>
-              </div>
-              <Switch
-                id="dark-mode"
-                checked={userSettings.preferences.darkMode}
-                onCheckedChange={(checked) => updateSetting('preferences', 'darkMode', checked)}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <Label htmlFor="compact-view" className="text-sm font-medium">
-                    Compact View
-                  </Label>
-                  <p className="text-xs text-muted-foreground">Show more content in less space</p>
-                </div>
-              </div>
-              <Switch
-                id="compact-view"
-                checked={userSettings.preferences.compactView}
-                onCheckedChange={(checked) => updateSetting('preferences', 'compactView', checked)}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="auto-logout" className="text-sm font-medium">
-                  Auto Logout
-                </Label>
-                <p className="text-xs text-muted-foreground">Automatically logout after inactivity</p>
-              </div>
-              <Switch
-                id="auto-logout"
-                checked={userSettings.preferences.autoLogout}
-                onCheckedChange={(checked) => updateSetting('preferences', 'autoLogout', checked)}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="analytics-opt-in" className="text-sm font-medium">
-                  Analytics Opt-in
-                </Label>
-                <p className="text-xs text-muted-foreground">Help improve the app by sharing usage data</p>
-              </div>
-              <Switch
-                id="analytics-opt-in"
-                checked={userSettings.preferences.analyticsOptIn}
-                onCheckedChange={(checked) => updateSetting('preferences', 'analyticsOptIn', checked)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Data Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
-              Data Management
-            </CardTitle>
-            <CardDescription>
-              Manage your account data and privacy
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium">Export Account Data</Label>
-                <p className="text-xs text-muted-foreground">Download all your account data in JSON format</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={exportData}>
-                <Download className="h-4 w-4 mr-2" />
-                Export Data
-              </Button>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium text-red-600">Delete Account</Label>
-                <p className="text-xs text-muted-foreground">Permanently delete your account and all associated data</p>
-              </div>
-              <Button variant="destructive" size="sm" onClick={deleteAccount}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Account
-              </Button>
             </div>
           </CardContent>
         </Card>

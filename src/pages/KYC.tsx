@@ -174,7 +174,7 @@ const KYC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl bg-background text-foreground min-h-screen">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">

@@ -29,8 +29,8 @@ interface ProfileDropdownProps {
 }
 
 export const ProfileDropdown = ({
-  userEmail = "investor@tripvesta.com",
-  userName = "John Investor"
+  userEmail = "yogesh.sharma@faberwork.com",
+  userName = "Yogesh Sharma"
 }: ProfileDropdownProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -83,7 +83,7 @@ export const ProfileDropdown = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-3 py-2 h-auto hover:bg-gray-100"
+          className="flex items-center gap-2 px-3 py-2 h-auto hover:bg-muted"
         >
           <Avatar className="h-8 w-8">
             <AvatarImage src="" alt={userName} />
@@ -131,13 +131,7 @@ export const ProfileDropdown = ({
         {/* Settings */}
         <DropdownMenuItem onClick={handleSettingsClick} className="cursor-pointer">
           <Settings className="h-4 w-4 mr-2" />
-          <span>Account Settings</span>
-        </DropdownMenuItem>
-
-        {/* Profile */}
-        <DropdownMenuItem className="cursor-pointer">
-          <User className="h-4 w-4 mr-2" />
-          <span>My Profile</span>
+          <span>Settings</span>
         </DropdownMenuItem>
 
         {/* Wallet */}
@@ -151,12 +145,6 @@ export const ProfileDropdown = ({
           <Bell className="h-4 w-4 mr-2" />
           <span>Notifications</span>
           <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0.5">3</Badge>
-        </DropdownMenuItem>
-
-        {/* Security */}
-        <DropdownMenuItem className="cursor-pointer">
-          <Shield className="h-4 w-4 mr-2" />
-          <span>Security</span>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
