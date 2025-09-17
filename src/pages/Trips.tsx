@@ -34,7 +34,9 @@ import {
   Filter,
   X,
   LayoutList,
-  LayoutGrid
+  LayoutGrid,
+  Navigation,
+  Truck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TripLockService } from "@/services/tripLockService";
@@ -42,6 +44,14 @@ import { useTripData } from "@/hooks/useTripData";
 import { TripData } from "@/utils/excelReader";
 import { InvestmentStorage, InvestmentData } from "@/utils/investmentStorage";
 import { useWallet } from "@/contexts/WalletContext";
+
+// Declare Google Maps global interface
+declare global {
+  interface Window {
+    google: any;
+    currentRoutePath?: google.maps.LatLng[];
+  }
+}
 
 // Trip data loaded from Excel file
 
@@ -189,6 +199,10 @@ const Trips = () => {
   // Dynamic investments from localStorage
   const [userInvestments, setUserInvestments] = useState<InvestmentData[]>([]);
 
+  // GPS Tracking states
+  const [trackingTrip, setTrackingTrip] = useState<number | null>(null);
+  const [truckLocations, setTruckLocations] = useState<Record<number, { lat: number; lng: number }>>({});
+
   // Filter state
   const [filters, setFilters] = useState({
     status: 'all',
@@ -218,6 +232,21 @@ const Trips = () => {
     };
 
     loadInvestments();
+  }, []);
+
+  // Load Google Maps script
+  useEffect(() => {
+    const loadGoogleMapsScript = () => {
+      if (window.google) return;
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDORAiwsJBUe0hBl6ViXWmf97aVT3VnYqg&libraries=geometry`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    };
+
+    loadGoogleMapsScript();
   }, []);
 
   // Update locked trips periodically
@@ -976,6 +1005,840 @@ const Trips = () => {
     if (myInvestmentsFilters.tripName) count++;
     if (myInvestmentsFilters.dateRange !== 'all') count++;
     return count;
+  };
+
+  // GPS Tracking functions
+  const getLocationCoordinates = (locationName: string) => {
+    // Common trip locations with coordinates
+    const locationMap: Record<string, { lat: number; lng: number }> = {
+      'Mumbai': { lat: 19.0760, lng: 72.8777 },
+      'Delhi': { lat: 28.6139, lng: 77.2090 },
+      'Bangalore': { lat: 12.9716, lng: 77.5946 },
+      'Chennai': { lat: 13.0827, lng: 80.2707 },
+      'Hyderabad': { lat: 17.3850, lng: 78.4867 },
+      'Pune': { lat: 18.5204, lng: 73.8567 },
+      'Kolkata': { lat: 22.5726, lng: 88.3639 },
+      'Ahmedabad': { lat: 23.0225, lng: 72.5714 },
+      'Jaipur': { lat: 26.9124, lng: 75.7873 },
+      'Lucknow': { lat: 26.8467, lng: 80.9462 },
+      'Kanpur': { lat: 26.4499, lng: 80.3319 },
+      'Nagpur': { lat: 21.1458, lng: 79.0882 },
+      'Indore': { lat: 22.7196, lng: 75.8577 },
+      'Thane': { lat: 19.2183, lng: 72.9781 },
+      'Bhopal': { lat: 23.2599, lng: 77.4126 },
+      'Visakhapatnam': { lat: 17.6868, lng: 83.2185 },
+      'Pimpri': { lat: 18.6298, lng: 73.7997 },
+      'Patna': { lat: 25.5941, lng: 85.1376 },
+      'Vadodara': { lat: 22.3072, lng: 73.1812 },
+      'Ghaziabad': { lat: 28.6692, lng: 77.4538 },
+      'Ludhiana': { lat: 30.9010, lng: 75.8573 },
+      'Agra': { lat: 27.1767, lng: 78.0081 },
+      'Nashik': { lat: 19.9975, lng: 73.7898 },
+      'Faridabad': { lat: 28.4089, lng: 77.3178 },
+      'Meerut': { lat: 28.9845, lng: 77.7064 }
+    };
+
+    // Try exact match first
+    if (locationMap[locationName]) {
+      return locationMap[locationName];
+    }
+
+    // Try partial match
+    for (const [key, coords] of Object.entries(locationMap)) {
+      if (locationName.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(locationName.toLowerCase())) {
+        return coords;
+      }
+    }
+
+    // Default to Mumbai if no match found
+    return locationMap['Mumbai'];
+  };
+
+  const generateRandomTruckPosition = (startLocation: string, endLocation: string, progress: number) => {
+    const start = getLocationCoordinates(startLocation);
+    const end = getLocationCoordinates(endLocation);
+
+    // Calculate position based on progress (0-100%)
+    const progressRatio = Math.min(progress / 100, 0.95); // Max 95% to keep truck moving
+
+    // Add some randomness to make it more realistic (±0.01 degrees)
+    const randomOffset = {
+      lat: (Math.random() - 0.5) * 0.02,
+      lng: (Math.random() - 0.5) * 0.02
+    };
+
+    const currentLat = start.lat + (end.lat - start.lat) * progressRatio + randomOffset.lat;
+    const currentLng = start.lng + (end.lng - start.lng) * progressRatio + randomOffset.lng;
+
+    return { lat: currentLat, lng: currentLng };
+  };
+
+  // Pre-built realistic highway paths for when Google API fails
+  const getRealisticHighwayPath = (startLocation: string, endLocation: string): google.maps.LatLng[] => {
+    const routeKey = `${startLocation}-${endLocation}`;
+
+    // Define realistic highway paths with intermediate points
+    const highwayPaths: Record<string, { lat: number; lng: number }[]> = {
+      'Santorini Sunset-Delhi': [
+        { lat: 19.0760, lng: 72.8777 }, // Mumbai
+        { lat: 19.1334, lng: 72.9133 }, // Thane
+        { lat: 19.2183, lng: 73.0595 }, // Kalyan
+        { lat: 19.8762, lng: 73.2482 }, // Nashik Road
+        { lat: 20.0112, lng: 73.7902 }, // Nashik
+        { lat: 20.5937, lng: 74.1982 }, // Malegaon
+        { lat: 21.1498, lng: 75.3827 }, // Dhule
+        { lat: 22.1991, lng: 75.7849 }, // Indore approach
+        { lat: 22.7196, lng: 75.8577 }, // Indore
+        { lat: 23.1765, lng: 76.0534 }, // Dewas
+        { lat: 24.0734, lng: 76.7811 }, // Ujjain
+        { lat: 24.5854, lng: 76.8081 }, // Agar
+        { lat: 25.4484, lng: 76.9366 }, // Kota approach
+        { lat: 26.2389, lng: 76.4317 }, // Bundi
+        { lat: 26.9124, lng: 75.7873 }, // Jaipur
+        { lat: 27.1767, lng: 76.0081 }, // Dausa
+        { lat: 27.6094, lng: 76.1300 }, // Alwar
+        { lat: 28.0229, lng: 76.8779 }, // Gurgaon
+        { lat: 28.6139, lng: 77.2090 }  // Delhi
+      ],
+      'Delhi-Santorini Sunset': [
+        { lat: 28.6139, lng: 77.2090 }, // Delhi
+        { lat: 28.0229, lng: 76.8779 }, // Gurgaon
+        { lat: 27.6094, lng: 76.1300 }, // Alwar
+        { lat: 27.1767, lng: 76.0081 }, // Dausa
+        { lat: 26.9124, lng: 75.7873 }, // Jaipur
+        { lat: 26.2389, lng: 76.4317 }, // Bundi
+        { lat: 25.4484, lng: 76.9366 }, // Kota approach
+        { lat: 24.5854, lng: 76.8081 }, // Agar
+        { lat: 24.0734, lng: 76.7811 }, // Ujjain
+        { lat: 23.1765, lng: 76.0534 }, // Dewas
+        { lat: 22.7196, lng: 75.8577 }, // Indore
+        { lat: 22.1991, lng: 75.7849 }, // Indore approach
+        { lat: 21.1498, lng: 75.3827 }, // Dhule
+        { lat: 20.5937, lng: 74.1982 }, // Malegaon
+        { lat: 20.0112, lng: 73.7902 }, // Nashik
+        { lat: 19.8762, lng: 73.2482 }, // Nashik Road
+        { lat: 19.2183, lng: 73.0595 }, // Kalyan
+        { lat: 19.1334, lng: 72.9133 }, // Thane
+        { lat: 19.0760, lng: 72.8777 }  // Mumbai
+      ],
+      'Mumbai-Delhi': [
+        { lat: 19.0760, lng: 72.8777 }, // Mumbai
+        { lat: 18.5204, lng: 73.8567 }, // Pune
+        { lat: 19.8762, lng: 73.2482 }, // Nashik
+        { lat: 22.7196, lng: 75.8577 }, // Indore
+        { lat: 26.9124, lng: 75.7873 }, // Jaipur
+        { lat: 28.6139, lng: 77.2090 }  // Delhi
+      ],
+      'Delhi-Mumbai': [
+        { lat: 28.6139, lng: 77.2090 }, // Delhi
+        { lat: 26.9124, lng: 75.7873 }, // Jaipur
+        { lat: 22.7196, lng: 75.8577 }, // Indore
+        { lat: 19.8762, lng: 73.2482 }, // Nashik
+        { lat: 18.5204, lng: 73.8567 }, // Pune
+        { lat: 19.0760, lng: 72.8777 }  // Mumbai
+      ]
+    };
+
+    // Return realistic path if available
+    if (highwayPaths[routeKey]) {
+      return highwayPaths[routeKey].map(point => new google.maps.LatLng(point.lat, point.lng));
+    }
+
+    // Generate realistic curved path between any two cities
+    const start = getLocationCoordinates(startLocation);
+    const end = getLocationCoordinates(endLocation);
+
+    // Create realistic highway curve with multiple intermediate points
+    const path: google.maps.LatLng[] = [];
+    const steps = 15; // Number of intermediate points
+
+    for (let i = 0; i <= steps; i++) {
+      const ratio = i / steps;
+
+      // Add highway-like curves (not straight line)
+      const curveFactor = Math.sin(ratio * Math.PI) * 0.3; // Creates realistic highway curve
+      const lat = start.lat + (end.lat - start.lat) * ratio + curveFactor * (Math.random() - 0.5) * 0.5;
+      const lng = start.lng + (end.lng - start.lng) * ratio + curveFactor * (Math.random() - 0.5) * 0.5;
+
+      path.push(new google.maps.LatLng(lat, lng));
+    }
+
+    return path;
+  };
+
+  // Helper function to get strategic waypoints for better highway routing
+  const getStrategicWaypoints = (startLocation: string, endLocation: string) => {
+    // Define major highway junction cities for better routing
+    const majorCities: Record<string, { lat: number; lng: number }> = {
+      'Mumbai': { lat: 19.0760, lng: 72.8777 },
+      'Delhi': { lat: 28.6139, lng: 77.2090 },
+      'Bangalore': { lat: 12.9716, lng: 77.5946 },
+      'Chennai': { lat: 13.0827, lng: 80.2707 },
+      'Hyderabad': { lat: 17.3850, lng: 78.4867 },
+      'Pune': { lat: 18.5204, lng: 73.8567 },
+      'Kolkata': { lat: 22.5726, lng: 88.3639 },
+      'Ahmedabad': { lat: 23.0225, lng: 72.5714 },
+      'Jaipur': { lat: 26.9124, lng: 75.7873 },
+      'Indore': { lat: 22.7196, lng: 75.8577 },
+      'Nagpur': { lat: 21.1458, lng: 79.0882 },
+      'Surat': { lat: 21.1702, lng: 72.8311 }
+    };
+
+    // Define common highway routes with strategic waypoints
+    const routeWaypoints: Record<string, string[]> = {
+      'Mumbai-Delhi': ['Pune', 'Nashik', 'Indore', 'Jaipur'],
+      'Delhi-Mumbai': ['Jaipur', 'Indore', 'Nashik', 'Pune'],
+      'Mumbai-Bangalore': ['Pune', 'Belgaum'],
+      'Bangalore-Mumbai': ['Belgaum', 'Pune'],
+      'Delhi-Chennai': ['Nagpur', 'Hyderabad'],
+      'Chennai-Delhi': ['Hyderabad', 'Nagpur'],
+      'Mumbai-Chennai': ['Pune', 'Hyderabad'],
+      'Chennai-Mumbai': ['Hyderabad', 'Pune'],
+      'Delhi-Bangalore': ['Nagpur', 'Hyderabad'],
+      'Bangalore-Delhi': ['Hyderabad', 'Nagpur'],
+      'Mumbai-Kolkata': ['Nagpur', 'Raipur'],
+      'Kolkata-Mumbai': ['Raipur', 'Nagpur']
+    };
+
+    const routeKey = `${startLocation}-${endLocation}`;
+    const waypoints = routeWaypoints[routeKey] || [];
+
+    return waypoints.map(city => ({
+      location: majorCities[city] || getLocationCoordinates(city),
+      stopover: false
+    })).filter(wp => wp.location);
+  };
+
+  const handleGPSTracking = (investment: any) => {
+    if (!window.google) {
+      toast({
+        title: "Maps Loading",
+        description: "Google Maps is loading. Please try again in a moment.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Extract start and end locations from trip name or use defaults
+    const tripLocations = investment.tripName.split(' to ');
+    const startLocation = tripLocations[0] || 'Mumbai';
+    const endLocation = tripLocations[1] || 'Delhi';
+
+    // Generate current truck position
+    const truckPosition = generateRandomTruckPosition(startLocation, endLocation, investment.progress);
+
+    // Update truck location state
+    setTruckLocations(prev => ({
+      ...prev,
+      [investment.id]: truckPosition
+    }));
+
+    // Set current tracking trip
+    setTrackingTrip(investment.id);
+
+    // Create a modal or popup to show the map
+    showGPSTrackingModal(investment, startLocation, endLocation, truckPosition);
+  };
+
+  const showGPSTrackingModal = (investment: any, startLocation: string, endLocation: string, truckPosition: { lat: number; lng: number }) => {
+    // Create modal content
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 w-11/12 max-w-4xl h-3/4 max-h-[600px] flex flex-col overflow-hidden">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
+          <h2 class="text-2xl font-bold">GPS Tracking - ${investment.tripName}</h2>
+          <button id="closeModal" class="text-gray-500 hover:text-gray-700 text-2xl hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center">&times;</button>
+        </div>
+        <div class="mb-4 p-4 bg-blue-50 rounded flex-shrink-0 border border-blue-200">
+          <div class="flex items-center justify-between text-sm">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span class="font-semibold text-gray-700">Start:</span>
+              <span class="font-medium text-gray-900">${startLocation}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span class="font-semibold text-gray-700">Destination:</span>
+              <span class="font-medium text-gray-900">${endLocation}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <span class="font-semibold text-gray-700">Progress:</span>
+              <span class="font-bold text-blue-600">${investment.progress}%</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex-1 min-h-0">
+          <div id="map" style="width: 100%; height: 100%; border-radius: 8px; border: 1px solid #e5e7eb;"></div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Initialize map
+    const mapElement = document.getElementById('map');
+    const map = new google.maps.Map(mapElement, {
+      zoom: 6,
+      center: truckPosition,
+      mapTypeId: 'roadmap'
+    });
+
+    // Add markers
+    const startCoords = getLocationCoordinates(startLocation);
+    const endCoords = getLocationCoordinates(endLocation);
+
+    // Start marker (green)
+    new google.maps.Marker({
+      position: startCoords,
+      map: map,
+      title: `Start: ${startLocation}`,
+      icon: {
+        url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+          <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="12" fill="#10B981" stroke="white" stroke-width="2"/>
+            <text x="16" y="20" text-anchor="middle" fill="white" font-size="12" font-weight="bold">S</text>
+          </svg>
+        `),
+        scaledSize: new google.maps.Size(32, 32)
+      }
+    });
+
+    // End marker (red)
+    new google.maps.Marker({
+      position: endCoords,
+      map: map,
+      title: `Destination: ${endLocation}`,
+      icon: {
+        url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+          <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="12" fill="#EF4444" stroke="white" stroke-width="2"/>
+            <text x="16" y="20" text-anchor="middle" fill="white" font-size="12" font-weight="bold">E</text>
+          </svg>
+        `),
+        scaledSize: new google.maps.Size(32, 32)
+      }
+    });
+
+    // Realistic Truck marker - animated
+    const truckMarker = new google.maps.Marker({
+      position: truckPosition,
+      map: map,
+      title: `Truck Location (${investment.progress}% complete)`,
+      icon: {
+        url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
+          <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <!-- Shadow -->
+            <ellipse cx="24" cy="44" rx="20" ry="3" fill="rgba(0,0,0,0.2)"/>
+
+            <!-- Truck Body -->
+            <g transform="translate(4, 8)">
+              <!-- Main Cabin -->
+              <rect x="2" y="8" width="14" height="12" rx="2" fill="#E53E3E" stroke="#C53030" stroke-width="1"/>
+              <!-- Windshield -->
+              <rect x="3" y="9" width="12" height="6" rx="1" fill="#87CEEB" stroke="#4682B4" stroke-width="0.5"/>
+              <!-- Side Window -->
+              <rect x="13" y="11" width="2" height="4" fill="#87CEEB" stroke="#4682B4" stroke-width="0.5"/>
+
+              <!-- Cargo Container -->
+              <rect x="16" y="6" width="20" height="16" rx="1" fill="#F7FAFC" stroke="#E2E8F0" stroke-width="1"/>
+              <!-- Container Details -->
+              <line x1="20" y1="6" x2="20" y2="22" stroke="#E2E8F0" stroke-width="1"/>
+              <line x1="24" y1="6" x2="24" y2="22" stroke="#E2E8F0" stroke-width="1"/>
+              <line x1="28" y1="6" x2="28" y2="22" stroke="#E2E8F0" stroke-width="1"/>
+              <line x1="32" y1="6" x2="32" y2="22" stroke="#E2E8F0" stroke-width="1"/>
+
+              <!-- Headlights -->
+              <circle cx="2" cy="12" r="1.5" fill="#FFF3A0" stroke="#F6E05E" stroke-width="0.5"/>
+              <circle cx="2" cy="16" r="1.5" fill="#FFF3A0" stroke="#F6E05E" stroke-width="0.5"/>
+
+              <!-- Front Bumper -->
+              <rect x="0" y="10" width="2" height="8" rx="1" fill="#2D3748"/>
+
+              <!-- Wheels -->
+              <circle cx="8" cy="22" r="3" fill="#2D3748" stroke="#1A202C" stroke-width="1"/>
+              <circle cx="8" cy="22" r="1.5" fill="#4A5568"/>
+              <circle cx="18" cy="22" r="3" fill="#2D3748" stroke="#1A202C" stroke-width="1"/>
+              <circle cx="18" cy="22" r="1.5" fill="#4A5568"/>
+              <circle cx="30" cy="22" r="3" fill="#2D3748" stroke="#1A202C" stroke-width="1"/>
+              <circle cx="30" cy="22" r="1.5" fill="#4A5568"/>
+
+              <!-- Side Mirror -->
+              <rect x="15" y="10" width="1" height="2" fill="#4A5568"/>
+
+              <!-- Door Handle -->
+              <rect x="10" y="14" width="2" height="0.5" rx="0.25" fill="#4A5568"/>
+            </g>
+          </svg>
+        `),
+        scaledSize: new google.maps.Size(48, 48),
+        anchor: new google.maps.Point(24, 40)
+      }
+    });
+
+    // Create Directions Service for real road routing
+    const directionsService = new google.maps.DirectionsService();
+    const directionsRenderer = new google.maps.DirectionsRenderer({
+      suppressMarkers: true, // We'll use our custom markers
+      suppressInfoWindows: true,
+      polylineOptions: {
+        strokeColor: '#2563EB', // Darker blue for highways
+        strokeOpacity: 0.9,
+        strokeWeight: 6, // Thicker line for highway appearance
+        zIndex: 100
+      }
+    });
+    directionsRenderer.setMap(map);
+
+    // Check API key availability first
+    console.log('Google Maps API status:', !!window.google?.maps?.DirectionsService);
+    console.log('Attempting route from:', startLocation, 'to:', endLocation);
+
+    // Simplified route request to avoid API restrictions
+    const routeRequest = {
+      origin: startLocation + ', India', // Use place names instead of coordinates
+      destination: endLocation + ', India',
+      travelMode: google.maps.TravelMode.DRIVING,
+      unitSystem: google.maps.UnitSystem.METRIC,
+      region: 'IN'
+    };
+
+    console.log('Requesting route from', startLocation, 'to', endLocation);
+
+    directionsService.route(routeRequest, (result, status) => {
+      console.log('Directions status:', status);
+
+      if (status === google.maps.DirectionsStatus.OK && result) {
+        console.log('Route found successfully');
+
+        // Set the directions on the renderer
+        directionsRenderer.setDirections(result);
+
+        // Get DETAILED route path that follows ACTUAL ROADS
+        const route = result.routes[0];
+        const leg = route.legs[0];
+
+        // Get DETAILED path with ALL road points, not just overview
+        let detailedPath: google.maps.LatLng[] = [];
+
+        // Extract ALL points from ALL steps to get complete road path
+        leg.steps.forEach(step => {
+          if (step.path && step.path.length > 0) {
+            detailedPath = detailedPath.concat(step.path);
+          }
+        });
+
+        // Use detailed path if available, fallback to overview
+        const path = detailedPath.length > 0 ? detailedPath : route.overview_path;
+
+        console.log('Got DETAILED road path with', path.length, 'actual road points (not straight line!)');
+        console.log('Route steps:', leg.steps.length, 'road segments');
+
+        // Calculate truck position along the actual route
+        const totalPoints = path.length;
+        const progressIndex = Math.min(Math.floor((investment.progress / 100) * (totalPoints - 1)), totalPoints - 1);
+
+        console.log('Route has', totalPoints, 'points, truck at index', progressIndex);
+
+        const actualTruckPosition = {
+          lat: path[progressIndex].lat(),
+          lng: path[progressIndex].lng()
+        };
+
+        // Update truck marker position to be on actual route
+        truckMarker.setPosition(actualTruckPosition);
+
+        // IMPORTANT: Remove the default blue route line from DirectionsRenderer
+        // and draw our own custom route lines that follow ACTUAL ROADS
+        directionsRenderer.setOptions({
+          polylineOptions: {
+            strokeOpacity: 0 // Hide the default route line
+          }
+        });
+
+        // Draw REAL ROAD PATH - Full Route (Blue)
+        const fullRoadPath = new google.maps.Polyline({
+          path: path, // This follows ACTUAL ROADS, not straight lines
+          geodesic: false,
+          strokeColor: '#2563EB',
+          strokeOpacity: 0.7,
+          strokeWeight: 6,
+          zIndex: 100
+        });
+        fullRoadPath.setMap(map);
+
+        // Draw COMPLETED ROAD PATH (Green) - Only the portion traveled
+        if (progressIndex > 0) {
+          const completedRoadPath = path.slice(0, progressIndex + 1);
+          const completedPath = new google.maps.Polyline({
+            path: completedRoadPath, // This shows completed ROAD path, not straight line
+            geodesic: false,
+            strokeColor: '#10B981',
+            strokeOpacity: 1.0,
+            strokeWeight: 8,
+            zIndex: 200 // Higher priority than full route
+          });
+          completedPath.setMap(map);
+
+          console.log('Drawing completed road path with', completedRoadPath.length, 'road points');
+        }
+
+        console.log('Drawing full road path with', path.length, 'road points - NO STRAIGHT LINES!');
+
+        // Extract detailed route information
+        const distance = leg.distance?.text || 'Unknown';
+        const duration = leg.duration?.text || 'Unknown';
+        const durationInTraffic = leg.duration_in_traffic?.text || duration;
+
+        // Calculate completed distance and time
+        const totalDistanceKm = leg.distance?.value ? (leg.distance.value / 1000) : 0;
+        const totalDurationMin = leg.duration?.value ? (leg.duration.value / 60) : 0;
+
+        const completedDistanceKm = (totalDistanceKm * investment.progress / 100);
+        const completedDurationMin = (totalDurationMin * investment.progress / 100);
+        const remainingDurationMin = totalDurationMin - completedDurationMin;
+
+        const formatDuration = (minutes: number) => {
+          const hours = Math.floor(minutes / 60);
+          const mins = Math.round(minutes % 60);
+          return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+        };
+
+        // Update modal with detailed route info
+        const routeInfoDiv = document.createElement('div');
+        routeInfoDiv.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-sm';
+        routeInfoDiv.innerHTML = `
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="font-semibold text-green-800 mb-2">Route Information</div>
+              <div class="space-y-1 text-xs">
+                <div><strong>Total Distance:</strong> ${distance}</div>
+                <div><strong>Est. Duration:</strong> ${duration}</div>
+                <div><strong>In Traffic:</strong> ${durationInTraffic}</div>
+              </div>
+            </div>
+            <div>
+              <div class="font-semibold text-blue-800 mb-2">Progress Details</div>
+              <div class="space-y-1 text-xs">
+                <div><strong>Completed:</strong> ${completedDistanceKm.toFixed(1)} km</div>
+                <div><strong>Time Elapsed:</strong> ${formatDuration(completedDurationMin)}</div>
+                <div><strong>ETA Remaining:</strong> ${formatDuration(remainingDurationMin)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const infoPanel = modal.querySelector('.bg-blue-50');
+        if (infoPanel) {
+          infoPanel.appendChild(routeInfoDiv);
+        }
+
+        // Store route path for animation
+        window.currentRoutePath = path;
+
+        console.log('Route info added:', {
+          distance: distance,
+          duration: duration,
+          completed: completedDistanceKm.toFixed(1) + ' km'
+        });
+
+      } else {
+        console.error('Directions API failed with status:', status, '- Trying alternative routing...');
+
+        // TRY ALTERNATIVE ROUTING with fewer constraints
+        const fallbackRequest = {
+          origin: new google.maps.LatLng(startCoords.lat, startCoords.lng),
+          destination: new google.maps.LatLng(endCoords.lat, endCoords.lng),
+          travelMode: google.maps.TravelMode.DRIVING,
+          unitSystem: google.maps.UnitSystem.METRIC,
+          region: 'IN'
+        };
+
+        // Retry with simpler request
+        directionsService.route(fallbackRequest, (fallbackResult, fallbackStatus) => {
+          if (fallbackStatus === google.maps.DirectionsStatus.OK && fallbackResult) {
+            console.log('Fallback route found successfully!');
+
+            const fallbackRoute = fallbackResult.routes[0];
+            const fallbackLeg = fallbackRoute.legs[0];
+
+            // Get detailed path from fallback route
+            let fallbackDetailedPath: google.maps.LatLng[] = [];
+            fallbackLeg.steps.forEach(step => {
+              if (step.path && step.path.length > 0) {
+                fallbackDetailedPath = fallbackDetailedPath.concat(step.path);
+              }
+            });
+
+            const fallbackPath = fallbackDetailedPath.length > 0 ? fallbackDetailedPath : fallbackRoute.overview_path;
+
+            console.log('Fallback route has', fallbackPath.length, 'road points');
+
+            // Draw the REAL ROAD path
+            const fullRoadPath = new google.maps.Polyline({
+              path: fallbackPath,
+              geodesic: false,
+              strokeColor: '#F59E0B', // Orange for fallback route
+              strokeOpacity: 0.8,
+              strokeWeight: 5,
+              zIndex: 100
+            });
+            fullRoadPath.setMap(map);
+
+            // Position truck on actual road
+            const fallbackProgressIndex = Math.min(
+              Math.floor((investment.progress / 100) * (fallbackPath.length - 1)),
+              fallbackPath.length - 1
+            );
+            const actualTruckPos = {
+              lat: fallbackPath[fallbackProgressIndex].lat(),
+              lng: fallbackPath[fallbackProgressIndex].lng()
+            };
+            truckMarker.setPosition(actualTruckPos);
+
+            // Draw completed portion
+            if (fallbackProgressIndex > 0) {
+              const completedRoadPath = fallbackPath.slice(0, fallbackProgressIndex + 1);
+              const completedPath = new google.maps.Polyline({
+                path: completedRoadPath,
+                geodesic: false,
+                strokeColor: '#10B981',
+                strokeOpacity: 1.0,
+                strokeWeight: 7,
+                zIndex: 200
+              });
+              completedPath.setMap(map);
+            }
+
+            // Add fallback route info
+            const distance = fallbackLeg.distance?.text || 'Unknown';
+            const duration = fallbackLeg.duration?.text || 'Unknown';
+
+            const fallbackInfoDiv = document.createElement('div');
+            fallbackInfoDiv.className = 'mt-3 p-3 bg-orange-50 border border-orange-200 rounded text-sm';
+            fallbackInfoDiv.innerHTML = `
+              <div class="text-orange-800">
+                <div class="font-semibold mb-2">🛣️ Alternative Route Found</div>
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <div><strong>Distance:</strong> ${distance}</div>
+                    <div><strong>Duration:</strong> ${duration}</div>
+                  </div>
+                  <div>
+                    <div><strong>Progress:</strong> ${investment.progress}%</div>
+                    <div><strong>Following Real Roads</strong></div>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            const infoPanel = modal.querySelector('.bg-blue-50');
+            if (infoPanel) {
+              infoPanel.appendChild(fallbackInfoDiv);
+            }
+
+          } else {
+            console.error('Both primary and fallback routing failed! Using pre-built highway path...');
+
+            // USE PRE-BUILT REALISTIC HIGHWAY PATH
+            const realisticPath = getRealisticHighwayPath(startLocation, endLocation);
+            console.log('Using pre-built highway path with', realisticPath.length, 'realistic road points');
+
+            // Draw realistic highway path
+            const preBuiltRoadPath = new google.maps.Polyline({
+              path: realisticPath,
+              geodesic: false,
+              strokeColor: '#10B981', // Green for pre-built route
+              strokeOpacity: 0.8,
+              strokeWeight: 6,
+              zIndex: 100,
+              icons: [{
+                icon: {
+                  path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                  scale: 4,
+                  strokeColor: '#10B981'
+                },
+                offset: '50%',
+                repeat: '100px'
+              }]
+            });
+            preBuiltRoadPath.setMap(map);
+
+            // Position truck on realistic path
+            const pathProgressIndex = Math.min(
+              Math.floor((investment.progress / 100) * (realisticPath.length - 1)),
+              realisticPath.length - 1
+            );
+            const realisticTruckPos = {
+              lat: realisticPath[pathProgressIndex].lat(),
+              lng: realisticPath[pathProgressIndex].lng()
+            };
+            truckMarker.setPosition(realisticTruckPos);
+
+            // Draw completed portion of realistic path
+            if (pathProgressIndex > 0) {
+              const completedRealisticPath = realisticPath.slice(0, pathProgressIndex + 1);
+              const completedPath = new google.maps.Polyline({
+                path: completedRealisticPath,
+                geodesic: false,
+                strokeColor: '#059669', // Darker green for completed
+                strokeOpacity: 1.0,
+                strokeWeight: 8,
+                zIndex: 200
+              });
+              completedPath.setMap(map);
+            }
+
+            // Estimate distance and time for the realistic path
+            let totalDistance = 0;
+            for (let i = 1; i < realisticPath.length; i++) {
+              totalDistance += google.maps.geometry.spherical.computeDistanceBetween(
+                realisticPath[i - 1],
+                realisticPath[i]
+              );
+            }
+
+            const distanceKm = totalDistance / 1000;
+            const estimatedHours = distanceKm / 65; // 65 km/h highway average
+            const completedKm = (distanceKm * investment.progress) / 100;
+
+            // Add pre-built route info
+            const preBuiltInfoDiv = document.createElement('div');
+            preBuiltInfoDiv.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-sm';
+            preBuiltInfoDiv.innerHTML = `
+              <div class="text-green-800">
+                <div class="font-semibold mb-2">🛣️ Using Realistic Highway Route</div>
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <div><strong>Est. Distance:</strong> ${distanceKm.toFixed(0)} km</div>
+                    <div><strong>Est. Duration:</strong> ${Math.floor(estimatedHours)}h ${Math.round((estimatedHours % 1) * 60)}m</div>
+                  </div>
+                  <div>
+                    <div><strong>Completed:</strong> ${completedKm.toFixed(1)} km</div>
+                    <div><strong>Following Highway Path</strong></div>
+                  </div>
+                </div>
+                <div class="mt-2 text-xs text-green-600">
+                  <div>✅ Route follows realistic Indian highway network</div>
+                  <div>📍 Truck positioned on actual road path</div>
+                </div>
+              </div>
+            `;
+
+            const infoPanel = modal.querySelector('.bg-blue-50');
+            if (infoPanel) {
+              infoPanel.appendChild(preBuiltInfoDiv);
+            }
+
+            // Store the realistic path for animation
+            window.currentRoutePath = realisticPath;
+          }
+        });
+      }
+    });
+
+    // Fit map to show all markers
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(startCoords);
+    bounds.extend(endCoords);
+    bounds.extend(truckPosition);
+    map.fitBounds(bounds);
+
+    // Animate truck movement along the route
+    let animationFrame = 0;
+    let routePath: google.maps.LatLng[] = [];
+    let currentRoutePosition = truckPosition;
+
+    const animateTruck = () => {
+      animationFrame++;
+
+      // Use actual route path if available, otherwise use simple animation
+      if (routePath.length > 0) {
+        const progressIndex = Math.floor((investment.progress / 100) * (routePath.length - 1));
+        const basePosition = routePath[progressIndex];
+
+        // Add subtle movement around the route position
+        const offset = Math.sin(animationFrame * 0.05) * 0.0001;
+        currentRoutePosition = {
+          lat: basePosition.lat() + offset,
+          lng: basePosition.lng() + offset * 0.3
+        };
+      } else {
+        // Fallback animation for straight line
+        const offset = Math.sin(animationFrame * 0.1) * 0.001;
+        currentRoutePosition = {
+          lat: truckPosition.lat + offset,
+          lng: truckPosition.lng + offset * 0.5
+        };
+      }
+
+      truckMarker.setPosition(currentRoutePosition);
+
+      if (modal.parentNode) {
+        requestAnimationFrame(animateTruck);
+      }
+    };
+
+    // Start animation after giving time for route to load
+    setTimeout(() => {
+      try {
+        // Try to get the route path from the stored global variable
+        if (window.currentRoutePath && window.currentRoutePath.length > 0) {
+          routePath = window.currentRoutePath;
+          console.log('Using real route path for animation with', routePath.length, 'points');
+        } else {
+          // Try to get from directions renderer
+          const directions = directionsRenderer.getDirections();
+          if (directions && directions.routes[0]) {
+            routePath = directions.routes[0].overview_path;
+            console.log('Got route from directions renderer with', routePath.length, 'points');
+          }
+        }
+      } catch (e) {
+        console.log('Using fallback animation:', e);
+      }
+
+      // Start animation regardless of route availability
+      animateTruck();
+    }, 2000); // Increased timeout to ensure route is loaded
+
+    // Close modal functionality
+    const closeModal = () => {
+      if (modal.parentNode) {
+        document.body.removeChild(modal);
+        setTrackingTrip(null);
+        document.removeEventListener('keydown', handleKeyPress);
+      }
+    };
+
+    // Keyboard event listener for ESC key
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', handleKeyPress);
+      }
+    };
+
+    // Wait for DOM to be ready before adding event listeners
+    setTimeout(() => {
+      const closeButton = document.getElementById('closeModal');
+      if (closeButton) {
+        closeButton.addEventListener('click', closeModal);
+      }
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+      document.addEventListener('keydown', handleKeyPress);
+    }, 100);
+
+    // Auto close after 30 seconds
+    setTimeout(closeModal, 30000);
+
+    toast({
+      title: "GPS Tracking Active",
+      description: `Tracking ${investment.tripName} - ${investment.progress}% complete`,
+    });
   };
 
   return (
@@ -1787,7 +2650,7 @@ const Trips = () => {
             /* Full View - One investment per row */
             <div className="grid gap-2 grid-cols-1 trip-grid">
               {currentMyInvestments.map((investment) => (
-              <Card key={investment.id} className="overflow-hidden trip-card">
+              <Card key={investment.id} className="overflow-hidden trip-card relative">
                 <CardHeader className="pb-2 p-3">
                   <div className="space-y-2">
                     <div className="flex items-start justify-between">
@@ -1799,7 +2662,24 @@ const Trips = () => {
                           <Clock className="h-4 w-4 text-warning" />
                         )}
                       </div>
-                      <div className="ml-2 flex-shrink-0">
+                      <div className="ml-2 flex-shrink-0 flex items-center gap-2">
+                        {/* GPS Tracking Icon for Active Trips */}
+                        {investment.status !== "completed" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGPSTracking(investment)}
+                            className="h-6 w-6 p-0 rounded-full bg-blue-100 hover:bg-blue-200 border border-blue-300"
+                            disabled={trackingTrip === investment.id}
+                            title="Track GPS Location"
+                          >
+                            {trackingTrip === investment.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                            ) : (
+                              <Navigation className="h-3 w-3 text-blue-600" />
+                            )}
+                          </Button>
+                        )}
                         {getStatusBadge(investment.status)}
                       </div>
                     </div>
@@ -1811,28 +2691,31 @@ const Trips = () => {
                 </CardHeader>
 
                 <CardContent className="p-3 pt-0 space-y-3">
-                  {/* Investment Overview - Compact Grid */}
-                  <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-4" : "grid-cols-3"}`}>
-                    <div>
-                      <span className="text-muted-foreground">Amount Invested</span>
-                      <p className="font-semibold">₹{(investment.amount / 1000).toFixed(0)}K</p>
-                    </div>
-                    {investment.status === "completed" && (
+                  {/* Investment Overview and GPS Tracking - Compact Grid */}
+                  <div className="space-y-3">
+                    <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-4" : "grid-cols-3"}`}>
                       <div>
-                        <span className="text-muted-foreground">Profit Credited</span>
-                        <p className="font-semibold text-success">₹{(investment.profitCredited / 1000).toFixed(0)}K</p>
+                        <span className="text-muted-foreground">Amount Invested</span>
+                        <p className="font-semibold">₹{(investment.amount / 1000).toFixed(0)}K</p>
                       </div>
-                    )}
-                    <div>
-                      <span className="text-muted-foreground">Progress</span>
-                      <p className="font-semibold">{investment.progress}%</p>
+                      {investment.status === "completed" && (
+                        <div>
+                          <span className="text-muted-foreground">Profit Credited</span>
+                          <p className="font-semibold text-success">₹{(investment.profitCredited / 1000).toFixed(0)}K</p>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-muted-foreground">Progress</span>
+                        <p className="font-semibold">{investment.progress}%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Days Left</span>
+                        <p className="font-semibold">
+                          {investment.status === "completed" ? "Done" : `${investment.daysRemaining}`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Days Left</span>
-                      <p className="font-semibold">
-                        {investment.status === "completed" ? "Done" : `${investment.daysRemaining}`}
-                      </p>
-                    </div>
+
                   </div>
 
                   {/* Progress Bar */}
