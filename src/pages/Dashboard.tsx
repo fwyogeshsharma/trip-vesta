@@ -1,15 +1,19 @@
 import { MetricCard } from "@/components/MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Users, 
-  MapPin, 
-  TrendingUp, 
+import {
+  Users,
+  MapPin,
+  TrendingUp,
   DollarSign,
   Activity,
   Target,
   BarChart3,
-  PieChart
+  PieChart,
+  Shield,
+  Award,
+  Star,
+  Clock
 } from "lucide-react";
 import {
   LineChart,
@@ -134,6 +138,98 @@ const tripPerformanceData = [
   { trip: 'Coca Cola', expected: 12, actual: 14.8 },
   { trip: 'Dynamic Cable', expected: 14, actual: 16.3 },
   { trip: 'Hindustan Unilever', expected: 20, actual: 23.1 }
+];
+
+// Top Investors for credibility
+const topInvestors = [
+  {
+    id: 1,
+    name: "Kiran Tata",
+    title: "Executive Director, Tata Group",
+    location: "Mumbai, India",
+    totalInvestment: 5500000,
+    activeTrips: 8,
+    returns: 24.5,
+    joinedDate: "2023-06-15",
+    verified: true
+  },
+  {
+    id: 2,
+    name: "Aditya Birla",
+    title: "Managing Director, Birla Corporation",
+    location: "Kolkata, India",
+    totalInvestment: 4200000,
+    activeTrips: 6,
+    returns: 21.8,
+    joinedDate: "2023-07-22",
+    verified: true
+  },
+  {
+    id: 3,
+    name: "Deepak Parekh",
+    title: "Chairman, HDFC Group",
+    location: "Mumbai, India",
+    totalInvestment: 3800000,
+    activeTrips: 5,
+    returns: 19.6,
+    joinedDate: "2023-08-10",
+    verified: true
+  },
+  {
+    id: 4,
+    name: "Kishore Hiranandani",
+    title: "Co-Founder, Hiranandani Group",
+    location: "Mumbai, India",
+    totalInvestment: 2900000,
+    activeTrips: 4,
+    returns: 22.3,
+    joinedDate: "2023-09-05",
+    verified: true
+  },
+  {
+    id: 5,
+    name: "Ravi Ruia",
+    title: "Chairman, Essar Group",
+    location: "Mumbai, India",
+    totalInvestment: 2100000,
+    activeTrips: 3,
+    returns: 18.7,
+    joinedDate: "2023-10-18",
+    verified: true
+  },
+  {
+    id: 6,
+    name: "Ashwin Dani",
+    title: "Vice Chairman, Asian Paints",
+    location: "Mumbai, India",
+    totalInvestment: 1800000,
+    activeTrips: 4,
+    returns: 20.4,
+    joinedDate: "2023-11-12",
+    verified: true
+  },
+  {
+    id: 7,
+    name: "Ramesh Damani",
+    title: "Stock Market Investor",
+    location: "Mumbai, India",
+    totalInvestment: 1500000,
+    activeTrips: 3,
+    returns: 25.1,
+    joinedDate: "2024-01-08",
+    verified: true
+  },
+  {
+    id: 8,
+    name: "Sunil Vaswani",
+    title: "Chairman, Stallion Group",
+    location: "Dubai, UAE",
+    totalInvestment: 1200000,
+    activeTrips: 2,
+    returns: 17.9,
+    joinedDate: "2024-02-15",
+    verified: true
+  }
 ];
 
 const Dashboard = () => {
@@ -322,37 +418,136 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Recent Trips */}
+      {/* Recent Trips and Top Investors Grid */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Recent Trips */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Recent Investment Opportunities
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentTrips.map((trip) => (
+                <div key={trip.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{trip.name}</h3>
+                      {getStatusBadge(trip.status)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {trip.location} • {trip.investors} investors
+                    </p>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span>Target: ₹{trip.targetAmount.toLocaleString()}</span>
+                      <span>Raised: ₹{trip.currentAmount.toLocaleString()}</span>
+                      <span className="text-success">Return: {trip.expectedReturn}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold">
+                      {getProgress(trip.currentAmount, trip.targetAmount)}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">Funded</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Investors */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5" />
+              Top Investors
+              <Badge variant="outline" className="ml-auto">
+                Verified
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {topInvestors.slice(0, 3).map((investor, index) => (
+                <div key={investor.id} className="flex items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-primary/5 to-transparent">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-semibold">
+                        {investor.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      {investor.verified && (
+                        <Shield className="absolute -top-1 -right-1 h-4 w-4 text-success bg-white rounded-full" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm">{investor.name}</h3>
+                        {index < 3 && (
+                          <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{investor.title}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {investor.location}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-success">
+                      {investor.returns}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">Returns</p>
+                    <p className="text-xs text-muted-foreground">
+                      ₹{(investor.totalInvestment / 100000).toFixed(1)}L invested
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* All Verified Investors */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Recent Investment Opportunities
+            <Users className="h-5 w-5" />
+            Our Verified Investor Community
+            <Badge variant="outline" className="ml-2">
+              <Shield className="h-3 w-3 mr-1" />
+              All Verified
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentTrips.map((trip) => (
-              <div key={trip.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{trip.name}</h3>
-                    {getStatusBadge(trip.status)}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {topInvestors.map((investor) => (
+              <div key={investor.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white text-sm font-semibold">
+                    {investor.name.split(' ').map(n => n[0]).join('')}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {trip.location} • {trip.investors} investors
-                  </p>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span>Target: ₹{trip.targetAmount.toLocaleString()}</span>
-                    <span>Raised: ₹{trip.currentAmount.toLocaleString()}</span>
-                    <span className="text-success">Return: {trip.expectedReturn}</span>
+                  <Shield className="absolute -top-0.5 -right-0.5 h-3 w-3 text-success bg-white rounded-full" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-sm truncate">{investor.name}</h4>
+                  <p className="text-xs text-muted-foreground truncate">{investor.title}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span>{investor.activeTrips} trips</span>
+                    <span>•</span>
+                    <span className="text-success font-medium">{investor.returns}%</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold">
-                    {getProgress(trip.currentAmount, trip.targetAmount)}%
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Since {new Date(investor.joinedDate).getFullYear()}
                   </div>
-                  <p className="text-xs text-muted-foreground">Funded</p>
                 </div>
               </div>
             ))}
