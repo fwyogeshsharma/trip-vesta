@@ -1,73 +1,155 @@
-# Welcome to your Lovable project
+# Trip Vesta - Investment Platform
 
-## Project info
+A comprehensive trip investment platform that allows users to browse available investment opportunities, make informed investment decisions, and track their portfolio performance through an intuitive and modern interface.
 
-**URL**: https://lovable.dev/projects/09cda39b-17f0-49b8-9cef-681c628da349
+## 🌟 Project Overview
 
-## How can I edit this code?
+Trip Vesta is a modern web application built for managing trip investments with features including:
 
-There are several ways of editing your application.
+- **Investment Marketplace**: Browse and filter available trip investment opportunities
+- **Portfolio Management**: Track your investments with real-time progress updates
+- **Wallet Integration**: Manage your investment balance and transactions
+- **Real-time Data**: Excel-based data integration with live updates
+- **Responsive Design**: Optimized for both desktop and mobile devices
 
-**Use Lovable**
+## 🚀 Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/09cda39b-17f0-49b8-9cef-681c628da349) and start prompting.
+### Investment Platform
+- **Available Trips**: Discover and invest in various trip opportunities
+- **Advanced Filtering**: Filter by status, route, duration, dates, and more
+- **Bulk Investment**: Select and invest in multiple trips simultaneously
+- **Trip Locking**: Automatic reservation system to prevent double-booking
+- **Real-time Progress**: Live tracking of investment progress
 
-Changes made via Lovable will be committed automatically to this repo.
+### Portfolio Management
+- **My Investments**: Track all your active and completed investments
+- **Milestone Tracking**: Visual progress indicators for each investment phase
+- **Performance Analytics**: Monitor returns and investment outcomes
+- **Investment History**: Complete transaction and progress history
 
-**Use your preferred IDE**
+### User Experience
+- **Intuitive Interface**: Modern, clean design with shadcn-ui components
+- **Responsive Layout**: Seamless experience across all devices
+- **Real-time Updates**: Live data synchronization and progress tracking
+- **Smart Validation**: Input validation and error handling
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🛠️ Technologies Used
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+This project is built with modern web technologies:
 
-Follow these steps:
+- **Frontend Framework**: React 18 with TypeScript
+- **Build Tool**: Vite for fast development and building
+- **UI Components**: shadcn-ui with Radix UI primitives
+- **Styling**: Tailwind CSS for responsive design
+- **State Management**: React Query for server state management
+- **Routing**: React Router for navigation
+- **Forms**: React Hook Form with Zod validation
+- **Charts**: Recharts for data visualization
+- **Icons**: Lucide React for consistent iconography
+
+## 📦 Installation & Setup
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn package manager
+
+### Getting Started
+
+1. **Clone the repository**
+   ```sh
+   git clone <repository-url>
+   cd trip-vesta
+   ```
+
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
+
+3. **Start the development server**
+   ```sh
+   npm run dev
+   ```
+
+4. **Open your browser**
+   Navigate to `http://localhost:5173` to view the application
+
+### Available Scripts
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Development
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run build:dev    # Build in development mode
+npm run preview      # Preview production build
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Code Quality
+npm run lint         # Run ESLint
 ```
 
-**Edit a file directly in GitHub**
+## 📁 Project Structure
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+trip-vesta/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── contexts/       # React contexts (Wallet, etc.)
+│   ├── hooks/          # Custom React hooks
+│   ├── pages/          # Page components
+│   ├── services/       # Business logic and API services
+│   ├── utils/          # Utility functions
+│   └── App.tsx         # Main application component
+├── public/             # Static assets
+└── package.json        # Project dependencies and scripts
+```
 
-**Use GitHub Codespaces**
+## 🎯 Key Features in Detail
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Available Trips
+- Browse investment opportunities with comprehensive filtering
+- Real-time availability checking and trip locking
+- Bulk selection and investment capabilities
+- Progress tracking and milestone visualization
 
-## What technologies are used for this project?
+### My Investments
+- Portfolio overview with performance metrics
+- Detailed milestone tracking with visual progress indicators
+- Investment history and transaction details
+- Filter and search your investment portfolio
 
-This project is built with:
+### Wallet Management
+- Real-time balance tracking
+- Transaction history
+- Secure payment processing integration
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔧 Configuration
 
-## How can I deploy this project?
+The application uses various configuration files:
 
-Simply open [Lovable](https://lovable.dev/projects/09cda39b-17f0-49b8-9cef-681c628da349) and click on Share -> Publish.
+- `tailwind.config.js` - Tailwind CSS configuration
+- `vite.config.ts` - Vite build configuration
+- `tsconfig.json` - TypeScript configuration
+- `eslint.config.js` - ESLint rules and settings
 
-## Can I connect a custom domain to my Lovable project?
+## 📱 Responsive Design
 
-Yes, you can!
+Trip Vesta is fully responsive and provides an optimal experience across:
+- **Desktop**: Full-featured interface with multi-column layouts
+- **Tablet**: Adaptive layouts with touch-friendly interactions
+- **Mobile**: Optimized single-column layout with mobile-first design
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🤝 Contributing
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is proprietary software. All rights reserved.
+
+## 📞 Support
+
+For questions or support, please contact the development team or refer to the project documentation.
