@@ -58,8 +58,9 @@ declare global {
 const myInvestments = [
   {
     id: 1,
-    tripName: "Santorini Sunset",
-    amount: 207500,
+    tripName: "Emami Transportation",
+    companyLogo: "/clients/emami.png",
+    amount: 125000,
     investedDate: "2024-09-15",
     tripStartDate: "2024-09-20",
     expectedEndDate: "2024-12-01",
@@ -80,15 +81,16 @@ const myInvestments = [
   },
   {
     id: 2,
-    tripName: "African Safari",
-    amount: 415000,
+    tripName: "Dynamic Cables Transportation",
+    companyLogo: "/clients/dynamic-cables.png",
+    amount: 180000,
     investedDate: "2024-08-20",
     tripStartDate: "2024-08-25",
     expectedEndDate: "2024-10-20",
     status: "completed",
     progress: 100,
     daysRemaining: 0,
-    profitCredited: 74700, // 18% profit on 415000
+    profitCredited: 32400, // 18% profit on 180000
     milestones: [
       { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-08-25" },
       { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-08-30" },
@@ -102,8 +104,9 @@ const myInvestments = [
   },
   {
     id: 3,
-    tripName: "Berger Paints",
-    amount: 99600,
+    tripName: "Berger Paints Transportation",
+    companyLogo: "/clients/berger.png",
+    amount: 85000,
     investedDate: "2024-08-28",
     tripStartDate: "2024-09-01",
     expectedEndDate: "2024-12-15",
@@ -309,6 +312,7 @@ const Trips = () => {
       daysRemaining: Math.ceil((new Date(endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
       profitCredited: 0,
       originalTripId: trip.id,
+      companyLogo: trip.companyLogo,
       milestones: [
         { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed", date: today },
         { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "current", date: today },
@@ -2231,6 +2235,19 @@ const Trips = () => {
                             disabled={trip.status === "completed" || isLocked || isProcessing}
                             className="flex-shrink-0"
                           />
+                          {trip.companyLogo && (
+                            <div className="flex-shrink-0">
+                              <img
+                                src={trip.companyLogo}
+                                alt={`${trip.name} logo`}
+                                className="w-8 h-8 object-contain rounded border border-gray-200"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <h3 className="font-semibold text-sm truncate">{trip.name}</h3>
@@ -2291,6 +2308,19 @@ const Trips = () => {
                         disabled={trip.status === "completed" || isLocked || isProcessing}
                         className="mt-0.5"
                       />
+                      {trip.companyLogo && (
+                        <div className="flex-shrink-0 mr-3">
+                          <img
+                            src={trip.companyLogo}
+                            alt={`${trip.name} logo`}
+                            className="w-10 h-10 object-contain rounded border border-gray-200 bg-white"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
@@ -2618,7 +2648,20 @@ const Trips = () => {
                     <Card key={investment.id} className="p-3">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-sm truncate">{investment.tripName}</h3>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {investment.companyLogo && (
+                              <img
+                                src={investment.companyLogo}
+                                alt={`${investment.tripName} logo`}
+                                className="w-6 h-6 object-contain rounded border border-gray-200 flex-shrink-0"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <h3 className="font-semibold text-sm truncate">{investment.tripName}</h3>
+                          </div>
                           {getStatusBadge(investment.status)}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -2655,6 +2698,17 @@ const Trips = () => {
                   <div className="space-y-2">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                        {investment.companyLogo && (
+                          <img
+                            src={investment.companyLogo}
+                            alt={`${investment.tripName} logo`}
+                            className="w-8 h-8 object-contain rounded border border-gray-200 flex-shrink-0 bg-white"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        )}
                         <CardTitle className="text-sm font-semibold truncate">{investment.tripName}</CardTitle>
                         {investment.status === "completed" ? (
                           <CheckCircle className="h-4 w-4 text-success" />

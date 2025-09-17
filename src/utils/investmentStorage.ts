@@ -10,6 +10,7 @@ export interface InvestmentData {
   daysRemaining: number;
   profitCredited: number;
   originalTripId: number; // Reference to the original trip
+  companyLogo?: string; // Company logo path
   milestones: Array<{
     id: number;
     name: string;

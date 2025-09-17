@@ -11,16 +11,39 @@ const INDIAN_LOCATIONS = [
   'Patna, Bihar', 'Kanpur, Uttar Pradesh', 'Guwahati, Assam', 'Thiruvananthapuram, Kerala'
 ];
 
-// Indian companies for truck trip portal
-const INDIAN_COMPANIES = [
-  'Tata Motors', 'Mahindra & Mahindra', 'Berger Paints', 'Asian Paints',
-  'Dynamic Cables', 'Radian Private Limited', 'Reliance Industries', 'ITC Limited',
-  'Hindustan Unilever', 'Bajaj Auto', 'Hero MotoCorp', 'Maruti Suzuki',
-  'HDFC Bank', 'ICICI Bank', 'State Bank of India', 'Wipro',
-  'TCS', 'Infosys', 'Dr. Reddy\'s Labs', 'Sun Pharma',
-  'Ultratech Cement', 'Godrej Consumer', 'Nestle India', 'Britannia Industries',
-  'Dabur India', 'Marico Limited', 'Pidilite Industries', 'Kajaria Ceramics'
+// Client companies with their corresponding logo files
+interface CompanyLogo {
+  name: string;
+  logo: string;
+}
+
+const CLIENT_COMPANIES: CompanyLogo[] = [
+  { name: 'Alisha Torrent', logo: '/clients/AlishaTorrent.svg' },
+  { name: 'Balaji', logo: '/clients/balaji.png' },
+  { name: 'Berger Paints', logo: '/clients/berger.png' },
+  { name: 'Bhandari Plastic', logo: '/clients/bhandari-plastic.png' },
+  { name: 'Dynamic Cables', logo: '/clients/dynamic-cables.png' },
+  { name: 'Emami', logo: '/clients/emami.png' },
+  { name: 'Greenply', logo: '/clients/greenply.png' },
+  { name: 'INA Energy', logo: '/clients/ina-energy.png' },
+  { name: 'Mangal Electricals', logo: '/clients/mangal-electricals.png' },
+  { name: 'Manishankar Oils', logo: '/clients/Manishankar-Oils.png' },
+  { name: 'Man Structures', logo: '/clients/man-structures.png' },
+  { name: 'Mohit Polytech Pvt Ltd', logo: '/clients/Mohit-Polytech-Pvt-Ltd.png' },
+  { name: 'Oswal Cables', logo: '/clients/oswal-cables.png' },
+  { name: 'Raydean', logo: '/clients/raydean.png' },
+  { name: 'RCC', logo: '/clients/rcc.png' },
+  { name: 'Rex Pipes', logo: '/clients/rex-pipes.png' },
+  { name: 'RL Industries', logo: '/clients/rl-industries.png' },
+  { name: 'Sagar', logo: '/clients/sagar.png' },
+  { name: 'Source One', logo: '/clients/source-one.png' },
+  { name: 'Star Rising', logo: '/clients/star-rising.png' },
+  { name: 'True Power', logo: '/clients/true-power.png' },
+  { name: 'Varun Beverages', logo: '/clients/Varun-Beverages.png' }
 ];
+
+// Extract just the company names for backward compatibility
+const INDIAN_COMPANIES = CLIENT_COMPANIES.map(company => company.name);
 
 // Trip routes for truck transportation
 const TRIP_ROUTES = [
@@ -54,7 +77,7 @@ const getRandomPercentage = (): string => {
   return `${getRandomNumber(8, 25)}%`;
 };
 
-const generateRandomAmount = (min: number = 100000, max: number = 10000000): number => {
+const generateRandomAmount = (min: number = 5000, max: number = 200000): number => {
   return getRandomNumber(min, max);
 };
 
@@ -78,11 +101,12 @@ const safeParseArray = (value: any, fallback: string[] = []): string[] => {
 
 // Generate comprehensive fallback data
 const generateFallbackTripData = (index: number): Partial<TripData> => {
-  const baseAmount = generateRandomAmount(500000, 5000000);
+  const baseAmount = generateRandomAmount(5000, 200000);
   const currentAmount = Math.floor(baseAmount * (getRandomNumber(30, 95) / 100));
+  const selectedCompany = getRandomItem(CLIENT_COMPANIES);
 
   return {
-    name: `${getRandomItem(INDIAN_COMPANIES)} Trip`,
+    name: `${selectedCompany.name} Transportation`,
     location: getRandomItem(TRIP_ROUTES),
     duration: getRandomItem(PROJECT_DURATIONS),
     targetAmount: baseAmount,
@@ -92,7 +116,7 @@ const generateFallbackTripData = (index: number): Partial<TripData> => {
     status: getRandomItem(['active', 'active', 'active', 'completed']), // 75% active, 25% completed
     endDate: new Date(Date.now() + getRandomNumber(30, 365) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     minInvestment: Math.floor(baseAmount * 0.01), // 1% of target amount
-    description: `Truck transportation trip for ${getRandomItem(INDIAN_COMPANIES)} with reliable logistics and delivery services across India.`,
+    description: `Truck transportation services for ${selectedCompany.name} with reliable logistics and delivery services across India.`,
     highlights: [
       'Reliable transportation',
       'On-time delivery',
@@ -105,7 +129,8 @@ const generateFallbackTripData = (index: number): Partial<TripData> => {
     startDate: new Date(Date.now() - getRandomNumber(1, 180) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     exitStrategy: 'Trip completion and delivery confirmation',
     pastPerformance: `${getRandomNumber(95, 99)}% on-time delivery rate`,
-    tags: ['india', 'transport', getRandomItem(['logistics', 'delivery', 'freight', 'cargo'])]
+    tags: ['india', 'transport', getRandomItem(['logistics', 'delivery', 'freight', 'cargo'])],
+    companyLogo: selectedCompany.logo
   };
 };
 
@@ -133,6 +158,8 @@ export interface TripData {
   projectLeader?: string;
   documents?: string[];
   tags?: string[];
+  // Company logo information
+  companyLogo?: string;
 }
 
 export const readTripExcelFile = async (filePath: string): Promise<TripData[]> => {
@@ -167,6 +194,10 @@ export const readTripExcelFile = async (filePath: string): Promise<TripData[]> =
         name: safeParseString(
           rowData['Trip Name'] || rowData['Name'] || rowData['Project Name'],
           fallbackData.name!
+        ),
+        companyLogo: safeParseString(
+          rowData['Company Logo'] || rowData['Logo'],
+          fallbackData.companyLogo!
         ),
         location: safeParseString(
           rowData['Location'] || rowData['Region'],
