@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Settings, 
-  Users, 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Settings,
+  Users,
   TrendingUp,
   Edit,
   Plus,
@@ -18,7 +19,9 @@ import {
   Calendar,
   UserPlus,
   Target,
-  Percent
+  Percent,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -111,6 +114,45 @@ const trips = [
     endDate: "2024-12-30",
     expectedReturn: "16%",
     tdsPercentage: 2.8
+  },
+  {
+    id: 5,
+    name: "Tesla Motors",
+    location: "Global",
+    status: "completed",
+    targetAmount: 8500000,
+    currentAmount: 8500000,
+    investorCount: 42,
+    startDate: "2024-08-01",
+    endDate: "2024-09-15",
+    expectedReturn: "20%",
+    tdsPercentage: 3.5
+  },
+  {
+    id: 6,
+    name: "Apple Inc",
+    location: "Global",
+    status: "completed",
+    targetAmount: 12000000,
+    currentAmount: 12000000,
+    investorCount: 55,
+    startDate: "2024-07-10",
+    endDate: "2024-08-25",
+    expectedReturn: "22%",
+    tdsPercentage: 4.0
+  },
+  {
+    id: 7,
+    name: "Microsoft Corp",
+    location: "Global",
+    status: "completed",
+    targetAmount: 9750000,
+    currentAmount: 9750000,
+    investorCount: 48,
+    startDate: "2024-06-15",
+    endDate: "2024-07-30",
+    expectedReturn: "19%",
+    tdsPercentage: 3.2
   }
 ];
 
@@ -121,14 +163,47 @@ const Admin = () => {
   const [newInterestRate, setNewInterestRate] = useState("");
   const [editingTDS, setEditingTDS] = useState<number | null>(null);
   const [newTDSRate, setNewTDSRate] = useState("");
-  
+  const [collapsedDistributions, setCollapsedDistributions] = useState<{[key: number]: boolean}>({});
+
   // Trip assignment state
   const [selectedInvestor, setSelectedInvestor] = useState("");
   const [selectedTrip, setSelectedTrip] = useState("");
   const [assignmentAmount, setAssignmentAmount] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
 
-  const filteredInvestors = investors.filter(investor => 
+  // Percent allocation calculator state
+  const [totalAmount, setTotalAmount] = useState("");
+  const [tripType, setTripType] = useState<"rr" | "other" | "">("");
+  const [companyName, setCompanyName] = useState("");
+
+  // Calculate percentage allocation based on trip type
+  const calculateAllocation = () => {
+    const amount = parseFloat(totalAmount || "0");
+    if (amount <= 0 || !tripType) return null;
+
+    const investorAmount = amount * 0.6; // 60% always goes to investors
+    const remainingAmount = amount * 0.4; // 40% remaining
+
+    if (tripType === "rr") {
+      return {
+        investorAmount,
+        rrAmount: remainingAmount, // 40% to RR
+        companyAmount: 0,
+        total: amount
+      };
+    } else {
+      return {
+        investorAmount,
+        rrAmount: remainingAmount * 0.1, // 10% of remaining (4% of total)
+        companyAmount: remainingAmount * 0.9, // 90% of remaining (36% of total)
+        total: amount
+      };
+    }
+  };
+
+  const allocation = calculateAllocation();
+
+  const filteredInvestors = investors.filter(investor =>
     investor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     investor.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -319,8 +394,9 @@ const Admin = () => {
       <Tabs defaultValue="investors" className="space-y-4">
         <TabsList>
           <TabsTrigger value="investors">Investors</TabsTrigger>
-          <TabsTrigger value="trips">Trip Management</TabsTrigger>
           <TabsTrigger value="assignments">Trip Assignments</TabsTrigger>
+          <TabsTrigger value="trips">Trips History</TabsTrigger>
+          <TabsTrigger value="calculations">Percent Allocation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="investors" className="space-y-4">
@@ -440,13 +516,9 @@ const Admin = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Trip Management</CardTitle>
-                  <CardDescription>Create and manage investment trips</CardDescription>
+                  <CardTitle>Trips History</CardTitle>
+                  <CardDescription>View and manage investment trips history</CardDescription>
                 </div>
-                <Button onClick={handleCreateTrip}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Trip
-                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -521,9 +593,9 @@ const Admin = () => {
                             <Button size="sm" onClick={() => handleUpdateTDS(trip.id)}>
                               Save
                             </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => {
                                 setEditingTDS(null);
                                 setNewTDSRate("");
@@ -535,8 +607,8 @@ const Admin = () => {
                         ) : (
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-warning">{trip.tdsPercentage}%</span>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="ghost"
                               onClick={() => {
                                 setEditingTDS(trip.id);
@@ -548,15 +620,116 @@ const Admin = () => {
                           </div>
                         )}
                       </div>
-                      
-                      <Button 
-                        variant="outline" 
-                        onClick={() => handleEditTrip(trip.id, trip.name)}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Trip
-                      </Button>
+
                     </div>
+
+                    {/* Profit Distribution Row - Only for completed trips */}
+                    {trip.status === "completed" && (() => {
+                      // Generate consistent profit amounts based on trip ID for demo
+                      const seed = trip.id * 1000;
+                      const totalProfit = (seed % 7000) + 5000; // 5k-12k range
+
+                      // Determine if this is RR trip or other company trip based on trip ID
+                      const isRRTrip = trip.id % 2 === 0; // Even IDs are RR trips, odd IDs are other company
+
+                      const isCollapsed = collapsedDistributions[trip.id] !== false; // Default collapsed
+
+                      if (isRRTrip) {
+                        // 2 columns: Investor (60%) + RR (40%)
+                        const investorProfit = Math.floor(totalProfit * 0.60);
+                        const rrProfit = Math.floor(totalProfit * 0.40);
+
+                        return (
+                          <div className="mt-4 pt-4 border-t">
+                            <Collapsible
+                              open={!isCollapsed}
+                              onOpenChange={(open) => {
+                                setCollapsedDistributions(prev => ({
+                                  ...prev,
+                                  [trip.id]: !open
+                                }));
+                              }}
+                            >
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="flex items-center justify-between w-full p-2 text-sm font-medium text-success hover:bg-success/5"
+                                >
+                                  <span>Profit Distribution (RR Trip)</span>
+                                  {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="bg-success/5 p-3 rounded-lg mt-2">
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="text-center p-2 bg-primary/10 rounded">
+                                      <div className="font-medium text-primary">Investor Profit</div>
+                                      <div className="text-lg font-bold">₹{investorProfit.toLocaleString()}</div>
+                                      <div className="text-xs text-muted-foreground">60% of ₹{totalProfit.toLocaleString()}</div>
+                                    </div>
+                                    <div className="text-center p-2 bg-blue/10 rounded">
+                                      <div className="font-medium text-blue-600">RR Profit</div>
+                                      <div className="text-lg font-bold">₹{rrProfit.toLocaleString()}</div>
+                                      <div className="text-xs text-muted-foreground">40% of ₹{totalProfit.toLocaleString()}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          </div>
+                        );
+                      } else {
+                        // 3 columns: Investor (60%) + Company (36%) + RR (4%)
+                        const investorProfit = Math.floor(totalProfit * 0.60);
+                        const companyProfit = Math.floor(totalProfit * 0.36);
+                        const rrProfit = Math.floor(totalProfit * 0.04);
+
+                        return (
+                          <div className="mt-4 pt-4 border-t">
+                            <Collapsible
+                              open={!isCollapsed}
+                              onOpenChange={(open) => {
+                                setCollapsedDistributions(prev => ({
+                                  ...prev,
+                                  [trip.id]: !open
+                                }));
+                              }}
+                            >
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className="flex items-center justify-between w-full p-2 text-sm font-medium text-warning hover:bg-warning/5"
+                                >
+                                  <span>Profit Distribution (Other Company Trip)</span>
+                                  {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="bg-warning/5 p-3 rounded-lg mt-2">
+                                  <div className="grid grid-cols-3 gap-3 text-sm">
+                                    <div className="text-center p-2 bg-primary/10 rounded">
+                                      <div className="font-medium text-primary">Investor Profit</div>
+                                      <div className="text-lg font-bold">₹{investorProfit.toLocaleString()}</div>
+                                      <div className="text-xs text-muted-foreground">60% of ₹{totalProfit.toLocaleString()}</div>
+                                    </div>
+                                    <div className="text-center p-2 bg-warning/10 rounded">
+                                      <div className="font-medium text-warning">Intermediate Company(Darsal pvt. ltd.) Profit</div>
+                                      <div className="text-lg font-bold">₹{companyProfit.toLocaleString()}</div>
+                                      <div className="text-xs text-muted-foreground">36% of ₹{totalProfit.toLocaleString()}</div>
+                                    </div>
+                                    <div className="text-center p-2 bg-blue/10 rounded">
+                                      <div className="font-medium text-blue-600">RR Profit</div>
+                                      <div className="text-lg font-bold">₹{rrProfit.toLocaleString()}</div>
+                                      <div className="text-xs text-muted-foreground">4% of ₹{totalProfit.toLocaleString()}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 ))}
               </div>
@@ -758,6 +931,129 @@ const Admin = () => {
                         <p className="text-xs text-muted-foreground">18% return</p>
                       </div>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="calculations" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Percent className="h-5 w-5" />
+                Percent Allocation Calculator
+              </CardTitle>
+              <CardDescription>
+                Calculate percentage distribution when receiving amounts from investors
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Allocation */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Allocation</CardTitle>
+                  <CardDescription>
+                    Configure percentage distribution
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Card className="p-4 border-2 border-primary/30">
+                      <div className="space-y-4">
+                        <h5 className="font-medium text-primary">RR Trip Allocation</h5>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Investors:</span>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                defaultValue="60"
+                                className="w-16 h-8 text-success font-medium"
+                                min="0"
+                                max="100"
+                              />
+                              <span className="text-sm">%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">RR Platform:</span>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                defaultValue="40"
+                                className="w-16 h-8 text-primary font-medium"
+                                min="0"
+                                max="100"
+                              />
+                              <span className="text-sm">%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Card className="p-4 border-2 border-warning/30">
+                      <div className="space-y-4">
+                        <h5 className="font-medium text-warning">Other Company Trip Allocation</h5>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Investors:</span>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                defaultValue="60"
+                                className="w-16 h-8 text-success font-medium"
+                                min="0"
+                                max="100"
+                              />
+                              <span className="text-sm">%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Company:</span>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                defaultValue="36"
+                                className="w-16 h-8 text-warning font-medium"
+                                min="0"
+                                max="100"
+                              />
+                              <span className="text-sm">%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">RR Platform:</span>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                defaultValue="4"
+                                className="w-16 h-8 text-primary font-medium"
+                                min="0"
+                                max="100"
+                              />
+                              <span className="text-sm">%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={() => {
+                        toast({
+                          title: "Allocation Settings Saved",
+                          description: "Percentage allocation settings have been updated successfully.",
+                        });
+                      }}
+                      className="px-8"
+                    >
+                      Save Allocation Settings
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

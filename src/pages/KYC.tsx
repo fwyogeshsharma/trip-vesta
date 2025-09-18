@@ -22,7 +22,16 @@ import {
   ArrowLeft,
   ArrowRight,
   Save,
-  Send
+  Send,
+  Video,
+  Play,
+  Square,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Volume2,
+  VolumeX,
+  Headphones
 } from "lucide-react";
 import { KYCStorage, type KYCData } from "@/utils/kycStorage";
 
@@ -32,6 +41,13 @@ const KYC = () => {
   const [kycData, setKycData] = useState<KYCData | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showPhrase, setShowPhrase] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null);
+  const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null);
 
   // Load KYC data on component mount
   useEffect(() => {
@@ -41,6 +57,11 @@ const KYC = () => {
     }
     setKycData(data);
     setCurrentStep(data.currentStep);
+
+    // Initialize speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      setSpeechSynthesis(window.speechSynthesis);
+    }
   }, []);
 
   if (!kycData) return <div>Loading...</div>;
@@ -98,7 +119,7 @@ const KYC = () => {
 
   // Save and continue
   const saveAndContinue = () => {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
       updateKYCData('currentStep', newStep);
@@ -173,6 +194,278 @@ const KYC = () => {
     });
   };
 
+  // Video recording functions
+  const startVideoRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
+
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const videoBlob = new Blob(chunks, { type: 'video/mp4' });
+        setRecordedVideo(videoBlob);
+        KYCStorage.updateVideoVerificationStatus({
+          recordingCompleted: true
+        });
+        setKycData({
+          ...kycData!,
+          videoVerification: {
+            ...kycData!.videoVerification,
+            recordingCompleted: true
+          }
+        });
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+
+        toast({
+          title: "Recording Complete",
+          description: "Your video has been recorded successfully. Please upload it to complete verification.",
+        });
+      };
+
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+
+      KYCStorage.updateVideoVerificationStatus({
+        recordingStarted: true
+      });
+      setKycData({
+        ...kycData!,
+        videoVerification: {
+          ...kycData!.videoVerification,
+          recordingStarted: true
+        }
+      });
+
+      toast({
+        title: "Recording Started",
+        description: "Please hold your Aadhaar card clearly visible and read the verification phrase.",
+      });
+
+    } catch (error) {
+      toast({
+        title: "Recording Failed",
+        description: "Unable to access camera. Please check permissions and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopVideoRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const uploadVideo = async () => {
+    if (!recordedVideo) {
+      toast({
+        title: "No Video",
+        description: "Please record a video first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Simulate video upload
+    toast({
+      title: "Uploading Video",
+      description: "Please wait while we upload your verification video...",
+    });
+
+    // Simulate API upload delay
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    KYCStorage.updateVideoVerificationStatus({
+      uploadCompleted: true,
+      isVerified: true
+    });
+
+    setKycData({
+      ...kycData!,
+      videoVerification: {
+        ...kycData!.videoVerification,
+        uploadCompleted: true,
+        isVerified: true
+      }
+    });
+
+    toast({
+      title: "Video Uploaded Successfully",
+      description: "Your verification video has been uploaded to the portal for review.",
+    });
+  };
+
+  const generateNewPhrase = () => {
+    const currentLanguage = kycData?.videoVerification.selectedLanguage || 'english';
+    const newPhrase = KYCStorage.generateNewVerificationPhrase(currentLanguage);
+    KYCStorage.updateVideoVerificationStatus({
+      verificationPhrase: newPhrase
+    });
+    setKycData({
+      ...kycData!,
+      videoVerification: {
+        ...kycData!.videoVerification,
+        verificationPhrase: newPhrase
+      }
+    });
+    toast({
+      title: "New Phrase Generated",
+      description: `A new ${currentLanguage} verification phrase has been generated.`,
+    });
+  };
+
+  const changeLanguage = (language: 'english' | 'hindi') => {
+    const newPhrase = KYCStorage.generateNewVerificationPhrase(language);
+    KYCStorage.updateVideoVerificationStatus({
+      selectedLanguage: language,
+      verificationPhrase: newPhrase
+    });
+    setKycData({
+      ...kycData!,
+      videoVerification: {
+        ...kycData!.videoVerification,
+        selectedLanguage: language,
+        verificationPhrase: newPhrase
+      }
+    });
+    toast({
+      title: "Language Changed",
+      description: `Verification phrase language changed to ${language === 'english' ? 'English' : 'Hindi'}.`,
+    });
+  };
+
+
+  // Text-to-speech functions
+  const playVerificationPhrase = () => {
+    if (!speechSynthesis || !kycData?.videoVerification.verificationPhrase) {
+      toast({
+        title: "Audio Not Available",
+        description: "Text-to-speech is not supported in your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Stop any existing speech
+    if (currentUtterance) {
+      speechSynthesis.cancel();
+    }
+
+    const text = kycData.videoVerification.verificationPhrase;
+    const language = kycData.videoVerification.selectedLanguage;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Set language and voice
+    utterance.lang = language === 'hindi' ? 'hi-IN' : 'en-US';
+    utterance.rate = 0.8; // Slower speech for better comprehension
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // Find appropriate voice
+    const voices = speechSynthesis.getVoices();
+    const preferredVoice = voices.find(voice =>
+      language === 'hindi'
+        ? voice.lang.includes('hi') || voice.lang.includes('Hindi')
+        : voice.lang.includes('en')
+    );
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => {
+      setIsPlayingAudio(true);
+      toast({
+        title: "Playing Audio",
+        description: `Playing verification phrase in ${language === 'hindi' ? 'Hindi' : 'English'}.`,
+      });
+    };
+
+    utterance.onend = () => {
+      setIsPlayingAudio(false);
+      setCurrentUtterance(null);
+    };
+
+    utterance.onerror = () => {
+      setIsPlayingAudio(false);
+      setCurrentUtterance(null);
+      toast({
+        title: "Audio Error",
+        description: "Unable to play audio. Please try again.",
+        variant: "destructive",
+      });
+    };
+
+    setCurrentUtterance(utterance);
+    speechSynthesis.speak(utterance);
+  };
+
+  const stopAudio = () => {
+    if (speechSynthesis && currentUtterance) {
+      speechSynthesis.cancel();
+      setIsPlayingAudio(false);
+      setCurrentUtterance(null);
+      toast({
+        title: "Audio Stopped",
+        description: "Audio playback has been stopped.",
+      });
+    }
+  };
+
+  const playInstructions = () => {
+    if (!speechSynthesis) {
+      toast({
+        title: "Audio Not Available",
+        description: "Text-to-speech is not supported in your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const instructions = `Video recording instructions for KYC verification.
+    Step 1: Hold your Aadhaar card clearly visible in the camera frame.
+    Step 2: Read the entire verification phrase aloud clearly.
+    Step 3: Ensure your face and Aadhaar card are both clearly visible throughout the recording.
+    Step 4: Record in a well-lit environment for best quality.
+    You can now choose your language and listen to the verification phrase before starting the recording.`;
+
+    const utterance = new SpeechSynthesisUtterance(instructions);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.7;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    utterance.onstart = () => {
+      setIsPlayingAudio(true);
+    };
+
+    utterance.onend = () => {
+      setIsPlayingAudio(false);
+    };
+
+    speechSynthesis.speak(utterance);
+
+    toast({
+      title: "Playing Instructions",
+      description: "Audio instructions are now playing.",
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-4xl bg-background text-foreground min-h-screen">
       {/* Header */}
@@ -217,7 +510,7 @@ const KYC = () => {
 
       {/* KYC Form */}
       <Tabs value={currentStep.toString()} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="1" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Personal
@@ -233,6 +526,10 @@ const KYC = () => {
           <TabsTrigger value="4" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Bank Details
+          </TabsTrigger>
+          <TabsTrigger value="5" className="flex items-center gap-2">
+            <Video className="h-4 w-4" />
+            Video KYC
           </TabsTrigger>
         </TabsList>
 
@@ -766,6 +1063,288 @@ const KYC = () => {
           </Card>
         </TabsContent>
 
+        {/* Step 5: Video Verification */}
+        <TabsContent value="5" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Video className="h-5 w-5" />
+                Video Verification
+              </CardTitle>
+              <CardDescription>
+                Complete video verification by recording yourself holding your Aadhaar card while reading the verification phrase
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Accessibility Banner */}
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Headphones className="h-5 w-5 text-green-600" />
+                  <h4 className="font-semibold text-green-800">Audio Accessibility Features</h4>
+                </div>
+                <p className="text-sm text-green-700 mb-3">
+                  This KYC process includes audio support for visually impaired users. Listen to instructions and verification phrases using text-to-speech.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={playInstructions}
+                  disabled={isPlayingAudio}
+                  className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-100"
+                >
+                  <Volume2 className="h-4 w-4" />
+                  {isPlayingAudio ? 'Playing Instructions...' : 'Play Audio Instructions'}
+                </Button>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-2">Video Recording Instructions:</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• Hold your Aadhaar card clearly visible in the frame</li>
+                  <li>• Read the entire verification phrase aloud clearly</li>
+                  <li>• Ensure your face and Aadhaar card are both clearly visible</li>
+                  <li>• Record in a well-lit environment</li>
+                </ul>
+              </div>
+
+              {/* Language Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-medium">Select Language:</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={kycData?.videoVerification.selectedLanguage === 'english' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => changeLanguage('english')}
+                      className="flex items-center gap-1"
+                    >
+                      English
+                    </Button>
+                    <Button
+                      variant={kycData?.videoVerification.selectedLanguage === 'hindi' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => changeLanguage('hindi')}
+                      className="flex items-center gap-1"
+                    >
+                      हिंदी (Hindi)
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Choose your preferred language for the verification phrase. You will need to read this phrase aloud during video recording.
+                </p>
+              </div>
+
+              {/* Verification Phrase */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-medium">
+                    Verification Phrase ({kycData?.videoVerification.selectedLanguage === 'hindi' ? 'हिंदी' : 'English'}):
+                  </Label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPhrase(!showPhrase)}
+                      className="flex items-center gap-1"
+                    >
+                      {showPhrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPhrase ? 'Hide' : 'Show'} Phrase
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={isPlayingAudio ? stopAudio : playVerificationPhrase}
+                      disabled={!speechSynthesis}
+                      className="flex items-center gap-1 bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
+                    >
+                      {isPlayingAudio ? (
+                        <>
+                          <VolumeX className="h-4 w-4" />
+                          Stop Audio
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="h-4 w-4" />
+                          Play Audio
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={generateNewPhrase}
+                      className="flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      New Phrase
+                    </Button>
+                  </div>
+                </div>
+
+                {showPhrase && (
+                  <div className="p-4 bg-gray-50 border rounded-lg">
+                    <div className="text-sm leading-relaxed whitespace-pre-line font-medium">
+                      {kycData?.videoVerification.verificationPhrase}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground">
+                        This is a 2-line verification phrase. Please read both lines clearly during your video recording.
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={playVerificationPhrase}
+                        disabled={isPlayingAudio}
+                        className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                      >
+                        <Volume2 className="h-3 w-3" />
+                        Listen Again
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Audio-Only Section for Blind Users */}
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Headphones className="h-4 w-4 text-purple-600" />
+                    <h5 className="font-medium text-purple-800">Audio-Only Mode for Visually Impaired Users</h5>
+                  </div>
+                  <p className="text-sm text-purple-700 mb-3">
+                    You can complete the entire verification process using audio cues. Listen to the phrase multiple times and practice before recording.
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={playVerificationPhrase}
+                      disabled={isPlayingAudio}
+                      className="flex items-center gap-1 border-purple-300 text-purple-700 hover:bg-purple-100"
+                    >
+                      <Volume2 className="h-4 w-4" />
+                      {isPlayingAudio ? 'Playing Phrase...' : 'Practice Phrase Audio'}
+                    </Button>
+                    {isPlayingAudio && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={stopAudio}
+                        className="flex items-center gap-1 border-red-300 text-red-700 hover:bg-red-100"
+                      >
+                        <VolumeX className="h-4 w-4" />
+                        Stop
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recording Controls */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-4">
+                  {!kycData?.videoVerification.recordingStarted ? (
+                    <Button
+                      onClick={startVideoRecording}
+                      className="flex items-center gap-2 px-6 py-3"
+                      size="lg"
+                    >
+                      <Play className="h-5 w-5" />
+                      Start Recording
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      {isRecording ? (
+                        <Button
+                          onClick={stopVideoRecording}
+                          variant="destructive"
+                          className="flex items-center gap-2 px-6 py-3"
+                          size="lg"
+                        >
+                          <Square className="h-5 w-5" />
+                          Stop Recording
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={startVideoRecording}
+                          className="flex items-center gap-2 px-6 py-3"
+                          size="lg"
+                        >
+                          <Play className="h-5 w-5" />
+                          Record Again
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recording Status */}
+                {kycData?.videoVerification.recordingStarted && (
+                  <div className="text-center space-y-2">
+                    {isRecording ? (
+                      <div className="flex items-center justify-center gap-2 text-red-600">
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="font-medium">Recording in progress...</span>
+                      </div>
+                    ) : kycData?.videoVerification.recordingCompleted ? (
+                      <div className="flex items-center justify-center gap-2 text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="font-medium">Recording completed successfully</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2 text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        <span>Ready to record</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Section */}
+              {kycData?.videoVerification.recordingCompleted && (
+                <div className="space-y-4 p-4 border rounded-lg bg-green-50">
+                  <h4 className="font-semibold text-green-800">Upload Video for Verification</h4>
+                  <p className="text-sm text-green-700">
+                    Your video has been recorded successfully. Click upload to submit it for verification.
+                  </p>
+
+                  {!kycData?.videoVerification.uploadCompleted ? (
+                    <Button
+                      onClick={uploadVideo}
+                      className="w-full flex items-center gap-2"
+                      size="lg"
+                    >
+                      <Upload className="h-5 w-5" />
+                      Upload Video to Portal
+                    </Button>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2 text-green-600">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Video uploaded successfully to portal</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Verification Complete */}
+              {kycData?.videoVerification.isVerified && (
+                <div className="p-4 bg-green-100 border border-green-300 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-800 mb-2">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-semibold">Video Verification Complete!</span>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    Your video has been successfully uploaded to our secure portal for verification.
+                    Our team will review your submission and notify you of the outcome.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Navigation Buttons */}
         <div className="flex items-center justify-between pt-6">
           <Button
@@ -779,7 +1358,7 @@ const KYC = () => {
           </Button>
 
           <div className="flex items-center gap-2">
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <Button onClick={saveAndContinue} className="flex items-center gap-2">
                 <Save className="h-4 w-4" />
                 Save & Continue

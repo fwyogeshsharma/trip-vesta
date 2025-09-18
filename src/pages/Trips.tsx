@@ -68,6 +68,7 @@ const myInvestments = [
     progress: 75,
     daysRemaining: 47,
     profitCredited: 0, // Active trips don't have profit yet
+    profitGain: { amount: 8500, percentage: 60 }, // 60% profit, amount in 5k-12k range
     milestones: [
       { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-20" },
       { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-25" },
@@ -90,7 +91,8 @@ const myInvestments = [
     status: "completed",
     progress: 100,
     daysRemaining: 0,
-    profitCredited: 32400, // 18% profit on 180000
+    profitCredited: 11500, // Profit in 5k-12k range
+    profitGain: { amount: Math.floor(11500 * 0.60), percentage: 60 }, // 60% of actual profit (₹6,900)
     milestones: [
       { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-08-25" },
       { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-08-30" },
@@ -114,6 +116,7 @@ const myInvestments = [
     progress: 60,
     daysRemaining: 61,
     profitCredited: 0, // Active trips don't have profit yet
+    profitGain: { amount: 6800, percentage: 60 }, // 60% profit, amount in 5k-12k range
     milestones: [
       { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-01" },
       { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-08" },
@@ -311,6 +314,7 @@ const Trips = () => {
       progress: 0, // Start at 0%
       daysRemaining: Math.ceil((new Date(endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
       profitCredited: 0,
+      profitGain: { amount: Math.floor(Math.random() * 7000) + 5000, percentage: 60 }, // 60% profit, random 5k-12k range
       originalTripId: trip.id,
       companyLogo: trip.companyLogo,
       milestones: [
@@ -353,14 +357,26 @@ const Trips = () => {
             const nextInterval = (Math.floor(Math.random() * 21) + 10) * 1000;
             setTimeout(updateProgress, nextInterval);
           } else {
-            // Investment completed, calculate profit
-            const profit = Math.floor(investment.amount * 0.15); // 15% profit
+            // Investment completed, calculate profit in 5k-12k range
+            const profit = Math.floor(Math.random() * 7000) + 5000; // 5k-12k range
+            const profitGain = Math.floor(profit * 0.60); // 60% of actual profit
             InvestmentStorage.updateInvestmentProgress(investmentId, 100);
 
-            // Update with profit
+            // Update with profit and mark all milestones as completed
             setUserInvestments(prev => prev.map(inv =>
               inv.id === investmentId
-                ? { ...inv, progress: 100, status: "completed", profitCredited: profit, daysRemaining: 0 }
+                ? {
+                    ...inv,
+                    progress: 100,
+                    status: "completed",
+                    profitCredited: profit,
+                    profitGain: { amount: profitGain, percentage: 60 },
+                    daysRemaining: 0,
+                    milestones: inv.milestones.map(milestone => ({
+                      ...milestone,
+                      status: "completed" as const
+                    }))
+                  }
                 : inv
             ));
 
@@ -934,8 +950,31 @@ const Trips = () => {
   //   }
   // };
 
-  // Combine static demo investments with user's dynamic investments
-  const allInvestments = [...myInvestments, ...userInvestments];
+  // Helper function to ensure completed trips have all milestones marked as completed and proper profit amounts
+  const ensureCompletedMilestonesForCompletedTrips = (investments: any[]) => {
+    return investments.map(investment => {
+      if (investment.status === "completed") {
+        // If profitCredited is 0 or not in 5k-12k range, set proper amounts
+        const needsProfitUpdate = investment.profitCredited === 0 || investment.profitCredited < 5000 || investment.profitCredited > 12000;
+        const newProfitCredited = needsProfitUpdate ? Math.floor(Math.random() * 7000) + 5000 : investment.profitCredited;
+        const newProfitGain = Math.floor(newProfitCredited * 0.60);
+
+        return {
+          ...investment,
+          profitCredited: newProfitCredited,
+          profitGain: { amount: newProfitGain, percentage: 60 },
+          milestones: investment.milestones.map((milestone: any) => ({
+            ...milestone,
+            status: "completed" as const
+          }))
+        };
+      }
+      return investment;
+    });
+  };
+
+  // Combine static demo investments with user's dynamic investments and ensure completed trips have all milestones completed
+  const allInvestments = ensureCompletedMilestonesForCompletedTrips([...myInvestments, ...userInvestments]);
 
   // My Investments filtering and pagination logic
   const filteredMyInvestments = allInvestments.filter(investment => {
@@ -2667,11 +2706,17 @@ const Trips = () => {
                         <div className="text-xs text-muted-foreground">
                           From: {investment.tripStartDate} to {investment.expectedEndDate}
                         </div>
-                        <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-3" : "grid-cols-2"}`}>
+                        <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-4" : "grid-cols-2"}`}>
                           <div>
                             <span className="text-muted-foreground">Amount</span>
                             <p className="font-semibold">₹{(investment.amount / 1000).toFixed(0)}K</p>
                           </div>
+                          {investment.status === "completed" && (investment as any).profitGain && (
+                            <div>
+                              <span className="text-muted-foreground">Profit Gain</span>
+                              <p className="font-semibold text-primary">₹{((investment as any).profitGain.amount / 1000).toFixed(1)}K ({(investment as any).profitGain.percentage}%)</p>
+                            </div>
+                          )}
                           {investment.status === "completed" && (
                             <div>
                               <span className="text-muted-foreground">Profit</span>
@@ -2747,11 +2792,17 @@ const Trips = () => {
                 <CardContent className="p-3 pt-0 space-y-3">
                   {/* Investment Overview and GPS Tracking - Compact Grid */}
                   <div className="space-y-3">
-                    <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-4" : "grid-cols-3"}`}>
+                    <div className={`grid gap-2 text-xs ${investment.status === "completed" ? "grid-cols-5" : "grid-cols-3"}`}>
                       <div>
                         <span className="text-muted-foreground">Amount Invested</span>
                         <p className="font-semibold">₹{(investment.amount / 1000).toFixed(0)}K</p>
                       </div>
+                      {investment.status === "completed" && (investment as any).profitGain && (
+                        <div>
+                          <span className="text-muted-foreground">Profit Gain</span>
+                          <p className="font-semibold text-primary">₹{((investment as any).profitGain.amount / 1000).toFixed(1)}K ({(investment as any).profitGain.percentage}%)</p>
+                        </div>
+                      )}
                       {investment.status === "completed" && (
                         <div>
                           <span className="text-muted-foreground">Profit Credited</span>

@@ -9,6 +9,7 @@ export interface InvestmentData {
   progress: number;
   daysRemaining: number;
   profitCredited: number;
+  profitGain?: { amount: number; percentage: number }; // Expected profit amount and percentage
   originalTripId: number; // Reference to the original trip
   companyLogo?: string; // Company logo path
   milestones: Array<{
