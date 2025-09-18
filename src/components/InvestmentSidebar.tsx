@@ -38,13 +38,6 @@ export function InvestmentSidebar() {
     return currentPath.startsWith(path);
   };
 
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center w-full ${
-      isActive
-        ? "bg-primary text-primary-foreground font-medium"
-        : "text-black dark:text-white"
-    }`;
-
   return (
     <Sidebar className="w-64" collapsible="none">
       <SidebarContent>
@@ -53,20 +46,20 @@ export function InvestmentSidebar() {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg text-black dark:text-white">InvestPortal</span>
+            <span className="font-bold text-lg">InvestPortal</span>
           </div>
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-black dark:text-white">Investment</SidebarGroupLabel>
+          <SidebarGroupLabel>Investment</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {userItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end={item.url === "/"} className={getNavCls}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <NavLink to={item.url} end={item.url === "/"}>
                       <item.icon className="h-4 w-4" />
-                      <span className="ml-2">{item.title}</span>
+                      <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -76,15 +69,15 @@ export function InvestmentSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-black dark:text-white">Management</SidebarGroupLabel>
+          <SidebarGroupLabel>Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <NavLink to={item.url}>
                       <item.icon className="h-4 w-4" />
-                      <span className="ml-2">{item.title}</span>
+                      <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
