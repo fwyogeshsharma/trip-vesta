@@ -25,40 +25,315 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Mock data for admin panel
+// Real investor data - 28 small company CEOs and founders
 const investors = [
   {
     id: 1,
-    name: "John Smith",
-    email: "john@example.com",
-    totalInvested: 1245000,
-    walletBalance: 207500,
-    profitEarned: 190900,
-    joinedDate: "2024-01-15",
+    name: "Rajesh Kumar",
+    email: "rajesh.kumar@techflow.com",
+    totalInvested: 1850000,
+    walletBalance: 275000,
+    profitEarned: 305250,
+    joinedDate: "2023-06-15",
     status: "active",
-    interestRate: 12
+    interestRate: 16.5
   },
   {
     id: 2,
-    name: "Sarah Johnson",
-    email: "sarah@example.com",
-    totalInvested: 705500,
-    walletBalance: 99600,
-    profitEarned: 81340,
-    joinedDate: "2024-02-20",
+    name: "Priya Sharma",
+    email: "priya.sharma@digitalhub.com",
+    totalInvested: 1450000,
+    walletBalance: 220000,
+    profitEarned: 263900,
+    joinedDate: "2023-07-22",
     status: "active",
-    interestRate: 14
+    interestRate: 18.2
   },
   {
     id: 3,
-    name: "Mike Davis",
-    email: "mike@example.com",
-    totalInvested: 1826000,
-    walletBalance: 265600,
-    profitEarned: 340300,
-    joinedDate: "2023-12-10",
+    name: "Amit Patel",
+    email: "amit.patel@datavision.com",
+    totalInvested: 2120000,
+    walletBalance: 320000,
+    profitEarned: 313760,
+    joinedDate: "2023-08-10",
     status: "active",
-    interestRate: 16
+    interestRate: 14.8
+  },
+  {
+    id: 4,
+    name: "Sneha Reddy",
+    email: "sneha.reddy@hrconnect.com",
+    totalInvested: 950000,
+    walletBalance: 145000,
+    profitEarned: 167200,
+    joinedDate: "2023-09-05",
+    status: "active",
+    interestRate: 17.6
+  },
+  {
+    id: 5,
+    name: "Vikram Singh",
+    email: "vikram.singh@salesforce.in",
+    totalInvested: 1680000,
+    walletBalance: 255000,
+    profitEarned: 265440,
+    joinedDate: "2023-10-18",
+    status: "active",
+    interestRate: 15.8
+  },
+  {
+    id: 6,
+    name: "Kavya Nair",
+    email: "kavya.nair@fintech.in",
+    totalInvested: 2400000,
+    walletBalance: 360000,
+    profitEarned: 465600,
+    joinedDate: "2023-11-12",
+    status: "active",
+    interestRate: 19.4
+  },
+  {
+    id: 7,
+    name: "Arjun Mehta",
+    email: "arjun.mehta@projectworks.com",
+    totalInvested: 1150000,
+    walletBalance: 175000,
+    profitEarned: 150650,
+    joinedDate: "2024-01-08",
+    status: "active",
+    interestRate: 13.1
+  },
+  {
+    id: 8,
+    name: "Deepika Joshi",
+    email: "deepika.joshi@aidatalabs.com",
+    totalInvested: 1590000,
+    walletBalance: 240000,
+    profitEarned: 332310,
+    joinedDate: "2024-02-15",
+    status: "active",
+    interestRate: 20.9
+  },
+  {
+    id: 9,
+    name: "Rahul Gupta",
+    email: "rahul.gupta@operationsplus.com",
+    totalInvested: 1720000,
+    walletBalance: 260000,
+    profitEarned: 278640,
+    joinedDate: "2024-03-01",
+    status: "active",
+    interestRate: 16.2
+  },
+  {
+    id: 10,
+    name: "Anita Desai",
+    email: "anita.desai@bizconpro.com",
+    totalInvested: 880000,
+    walletBalance: 135000,
+    profitEarned: 130240,
+    joinedDate: "2024-03-15",
+    status: "active",
+    interestRate: 14.8
+  },
+  {
+    id: 11,
+    name: "Manoj Agarwal",
+    email: "manoj.agarwal@teamsync.com",
+    totalInvested: 1650000,
+    walletBalance: 250000,
+    profitEarned: 290400,
+    joinedDate: "2024-04-02",
+    status: "active",
+    interestRate: 17.6
+  },
+  {
+    id: 12,
+    name: "Swati Kulkarni",
+    email: "swati.kulkarni@productlaunch.com",
+    totalInvested: 1980000,
+    walletBalance: 300000,
+    profitEarned: 304920,
+    joinedDate: "2024-04-18",
+    status: "active",
+    interestRate: 15.4
+  },
+  {
+    id: 13,
+    name: "Rohit Verma",
+    email: "rohit.verma@creativedesign.com",
+    totalInvested: 920000,
+    walletBalance: 140000,
+    profitEarned: 167440,
+    joinedDate: "2024-05-05",
+    status: "active",
+    interestRate: 18.2
+  },
+  {
+    id: 14,
+    name: "Neha Kapoor",
+    email: "neha.kapoor@contentkings.com",
+    totalInvested: 750000,
+    walletBalance: 115000,
+    profitEarned: 117750,
+    joinedDate: "2024-05-20",
+    status: "active",
+    interestRate: 15.7
+  },
+  {
+    id: 15,
+    name: "Sanjay Rao",
+    email: "sanjay.rao@archdesigns.com",
+    totalInvested: 2300000,
+    walletBalance: 345000,
+    profitEarned: 489900,
+    joinedDate: "2024-06-08",
+    status: "active",
+    interestRate: 21.3
+  },
+  {
+    id: 16,
+    name: "Pooja Malhotra",
+    email: "pooja.malhotra@accubooks.com",
+    totalInvested: 1280000,
+    walletBalance: 195000,
+    profitEarned: 216320,
+    joinedDate: "2024-06-25",
+    status: "active",
+    interestRate: 16.9
+  },
+  {
+    id: 17,
+    name: "Kiran Pandey",
+    email: "kiran.pandey@qualityfirst.com",
+    totalInvested: 1060000,
+    walletBalance: 160000,
+    profitEarned: 160060,
+    joinedDate: "2024-07-10",
+    status: "active",
+    interestRate: 15.1
+  },
+  {
+    id: 18,
+    name: "Varun Shetty",
+    email: "varun.shetty@cloudops.com",
+    totalInvested: 1620000,
+    walletBalance: 245000,
+    profitEarned: 281880,
+    joinedDate: "2024-07-28",
+    status: "active",
+    interestRate: 17.4
+  },
+  {
+    id: 19,
+    name: "Ritu Saxena",
+    email: "ritu.saxena@trainingpro.com",
+    totalInvested: 890000,
+    walletBalance: 135000,
+    profitEarned: 121040,
+    joinedDate: "2024-08-12",
+    status: "active",
+    interestRate: 13.6
+  },
+  {
+    id: 20,
+    name: "Ashish Bansal",
+    email: "ashish.bansal@researchhub.com",
+    totalInvested: 1470000,
+    walletBalance: 225000,
+    profitEarned: 291060,
+    joinedDate: "2024-08-30",
+    status: "active",
+    interestRate: 19.8
+  },
+  {
+    id: 21,
+    name: "Sunita Jain",
+    email: "sunita.jain@adminworks.com",
+    totalInvested: 720000,
+    walletBalance: 110000,
+    profitEarned: 92880,
+    joinedDate: "2024-09-15",
+    status: "active",
+    interestRate: 12.9
+  },
+  {
+    id: 22,
+    name: "Naveen Kumar",
+    email: "naveen.kumar@techsupport.com",
+    totalInvested: 1110000,
+    walletBalance: 170000,
+    profitEarned: 174270,
+    joinedDate: "2024-10-02",
+    status: "active",
+    interestRate: 15.7
+  },
+  {
+    id: 23,
+    name: "Meera Iyer",
+    email: "meera.iyer@legalease.com",
+    totalInvested: 1890000,
+    walletBalance: 285000,
+    profitEarned: 362880,
+    joinedDate: "2024-10-18",
+    status: "active",
+    interestRate: 19.2
+  },
+  {
+    id: 24,
+    name: "Gaurav Mishra",
+    email: "gaurav.mishra@businessgrow.com",
+    totalInvested: 1440000,
+    walletBalance: 220000,
+    profitEarned: 237600,
+    joinedDate: "2024-11-05",
+    status: "active",
+    interestRate: 16.5
+  },
+  {
+    id: 25,
+    name: "Divya Bhat",
+    email: "divya.bhat@designcraft.com",
+    totalInvested: 930000,
+    walletBalance: 140000,
+    profitEarned: 133020,
+    joinedDate: "2024-11-20",
+    status: "active",
+    interestRate: 14.3
+  },
+  {
+    id: 26,
+    name: "Harsh Agrawal",
+    email: "harsh.agrawal@networktech.com",
+    totalInvested: 1260000,
+    walletBalance: 190000,
+    profitEarned: 215460,
+    joinedDate: "2024-12-08",
+    status: "active",
+    interestRate: 17.1
+  },
+  {
+    id: 27,
+    name: "Shruti Tripathi",
+    email: "shruti.tripathi@eventmasters.com",
+    totalInvested: 870000,
+    walletBalance: 130000,
+    profitEarned: 116580,
+    joinedDate: "2024-12-22",
+    status: "active",
+    interestRate: 13.4
+  },
+  {
+    id: 28,
+    name: "Vishal Khanna",
+    email: "vishal.khanna@writeright.com",
+    totalInvested: 1080000,
+    walletBalance: 165000,
+    profitEarned: 171720,
+    joinedDate: "2025-01-10",
+    status: "active",
+    interestRate: 15.9
   }
 ];
 
