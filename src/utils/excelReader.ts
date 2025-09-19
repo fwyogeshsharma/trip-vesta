@@ -99,6 +99,15 @@ const safeParseArray = (value: any, fallback: string[] = []): string[] => {
   return str ? str.split(',').map(item => item.trim()).filter(Boolean) : fallback;
 };
 
+const safeParseBool = (value: any, fallback: boolean): boolean => {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  const str = String(value).toLowerCase().trim();
+  if (str === 'true' || str === '1' || str === 'yes') return true;
+  if (str === 'false' || str === '0' || str === 'no') return false;
+  return fallback;
+};
+
 // Generate comprehensive fallback data
 const generateFallbackTripData = (index: number): Partial<TripData> => {
   const baseAmount = generateRandomAmount(5000, 200000);
@@ -114,6 +123,7 @@ const generateFallbackTripData = (index: number): Partial<TripData> => {
     expectedReturn: getRandomPercentage(),
     investorCount: getRandomNumber(15, 100),
     status: getRandomItem(['active', 'active', 'active', 'completed']), // 75% active, 25% completed
+    insured: getRandomItem([true, true, false]), // 67% insured, 33% not insured
     endDate: new Date(Date.now() + getRandomNumber(30, 365) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     minInvestment: Math.floor(baseAmount * 0.01), // 1% of target amount
     description: `Truck transportation services for ${selectedCompany.name} with reliable logistics and delivery services across India.`,
@@ -148,6 +158,7 @@ export interface TripData {
   minInvestment: number;
   description: string;
   highlights: string[];
+  insured: boolean;
   // Additional fields from Excel
   startDate?: string;
   category?: string;
@@ -226,6 +237,10 @@ export const readTripExcelFile = async (filePath: string): Promise<TripData[]> =
         status: safeParseString(
           rowData['Status'],
           fallbackData.status!
+        ),
+        insured: safeParseBool(
+          rowData['Insured'],
+          fallbackData.insured!
         ),
         endDate: safeParseString(
           rowData['End Date'] || rowData['Deadline'],

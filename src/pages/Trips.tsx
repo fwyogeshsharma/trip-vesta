@@ -36,7 +36,8 @@ import {
   LayoutList,
   LayoutGrid,
   Navigation,
-  Truck
+  Truck,
+  Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TripLockService } from "@/services/tripLockService";
@@ -292,6 +293,18 @@ const Trips = () => {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const getInsuredBadge = (insured: boolean) => {
+    if (insured) {
+      return (
+        <Badge className="bg-blue-500 text-white flex items-center gap-1">
+          <Shield className="h-3 w-3" />
+          Insured
+        </Badge>
+      );
+    }
+    return null;
   };
 
   const getProgress = (current: number, target: number) => {
@@ -2290,7 +2303,10 @@ const Trips = () => {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <h3 className="font-semibold text-sm truncate">{trip.name}</h3>
-                              {getStatusBadge(trip.status)}
+                              <div className="flex items-center gap-1">
+                                {getStatusBadge(trip.status)}
+                                {getInsuredBadge(trip.insured)}
+                              </div>
                             </div>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                               <MapPin className="h-3 w-3 flex-shrink-0" />
@@ -2370,8 +2386,9 @@ const Trips = () => {
                               </Badge>
                             )}
                           </div>
-                          <div className="ml-2 flex-shrink-0">
+                          <div className="ml-2 flex-shrink-0 flex items-center gap-1">
                             {getStatusBadge(trip.status)}
+                            {getInsuredBadge(trip.insured)}
                           </div>
                         </div>
 
