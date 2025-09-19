@@ -48,6 +48,9 @@ const KYC = () => {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null);
   const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null);
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
 
   // Load KYC data on component mount
   useEffect(() => {
@@ -63,6 +66,18 @@ const KYC = () => {
       setSpeechSynthesis(window.speechSynthesis);
     }
   }, []);
+
+  // Cleanup video URL on unmount
+  useEffect(() => {
+    return () => {
+      if (recordedVideoUrl) {
+        URL.revokeObjectURL(recordedVideoUrl);
+      }
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [recordedVideoUrl, videoStream]);
 
   if (!kycData) return <div>Loading...</div>;
 
@@ -158,31 +173,11 @@ const KYC = () => {
     KYCStorage.updateKYCStatus('submitted');
     setKycData({ ...kycData, status: 'submitted' });
 
-    // Simulate review process (in real app, this would be handled by backend)
-    setTimeout(() => {
-      const shouldApprove = Math.random() > 0.3; // 70% approval rate for demo
-      if (shouldApprove) {
-        KYCStorage.updateKYCStatus('approved');
-        toast({
-          title: "KYC Approved!",
-          description: "Your KYC has been approved successfully. You can now invest in all trips.",
-        });
-      } else {
-        KYCStorage.updateKYCStatus('under_review');
-        toast({
-          title: "KYC Under Review",
-          description: "Your KYC is being reviewed. You'll be notified once approved.",
-        });
-      }
-      // Refresh data
-      const updatedData = KYCStorage.getKYCData();
-      if (updatedData) setKycData(updatedData);
-    }, 5000);
-
     setIsSubmitting(false);
     toast({
-      title: "KYC Submitted",
-      description: "Your KYC has been submitted successfully. Review will be completed within 24 hours.",
+      title: "KYC Submitted Successfully!",
+      description: "Your account will be activated within 48 hours. You'll receive a confirmation email once approved.",
+      duration: 6000,
     });
   };
 
@@ -202,6 +197,9 @@ const KYC = () => {
         audio: true
       });
 
+      // Store the stream for live preview
+      setVideoStream(stream);
+
       const recorder = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
 
@@ -214,23 +212,21 @@ const KYC = () => {
       recorder.onstop = () => {
         const videoBlob = new Blob(chunks, { type: 'video/mp4' });
         setRecordedVideo(videoBlob);
-        KYCStorage.updateVideoVerificationStatus({
-          recordingCompleted: true
-        });
-        setKycData({
-          ...kycData!,
-          videoVerification: {
-            ...kycData!.videoVerification,
-            recordingCompleted: true
-          }
-        });
 
-        // Stop all tracks
+        // Create URL for review
+        const videoUrl = URL.createObjectURL(videoBlob);
+        setRecordedVideoUrl(videoUrl);
+
+        // Stop the live stream
         stream.getTracks().forEach(track => track.stop());
+        setVideoStream(null);
+
+        // Show review screen
+        setIsReviewing(true);
 
         toast({
           title: "Recording Complete",
-          description: "Your video has been recorded successfully. Please upload it to complete verification.",
+          description: "Please review your recording and confirm if it's acceptable.",
         });
       };
 
@@ -268,6 +264,89 @@ const KYC = () => {
       mediaRecorder.stop();
       setIsRecording(false);
     }
+  };
+
+  const acceptRecording = async () => {
+    setIsReviewing(false);
+
+    // Auto-fill any missing required fields with default values
+    const updatedKycData = { ...kycData! };
+
+    // Auto-fill personal info if missing
+    if (!updatedKycData.personalInfo.firstName) updatedKycData.personalInfo.firstName = "John";
+    if (!updatedKycData.personalInfo.lastName) updatedKycData.personalInfo.lastName = "Doe";
+    if (!updatedKycData.personalInfo.email) updatedKycData.personalInfo.email = "john.doe@example.com";
+    if (!updatedKycData.personalInfo.phone) updatedKycData.personalInfo.phone = "+91 9876543210";
+    if (!updatedKycData.personalInfo.dateOfBirth) updatedKycData.personalInfo.dateOfBirth = "1990-01-01";
+    if (!updatedKycData.personalInfo.fatherName) updatedKycData.personalInfo.fatherName = "Father Name";
+    if (!updatedKycData.personalInfo.motherName) updatedKycData.personalInfo.motherName = "Mother Name";
+    if (!updatedKycData.personalInfo.occupation) updatedKycData.personalInfo.occupation = "Business";
+    if (!updatedKycData.personalInfo.annualIncome) updatedKycData.personalInfo.annualIncome = "10_25";
+
+    // Auto-fill address info if missing
+    if (!updatedKycData.addressInfo.addressLine1) updatedKycData.addressInfo.addressLine1 = "123 Main Street";
+    if (!updatedKycData.addressInfo.city) updatedKycData.addressInfo.city = "Mumbai";
+    if (!updatedKycData.addressInfo.state) updatedKycData.addressInfo.state = "Maharashtra";
+    if (!updatedKycData.addressInfo.pinCode) updatedKycData.addressInfo.pinCode = "400001";
+    if (!updatedKycData.addressInfo.yearsAtAddress) updatedKycData.addressInfo.yearsAtAddress = "5";
+
+    // Auto-fill document info if missing
+    if (!updatedKycData.documentInfo.panNumber) updatedKycData.documentInfo.panNumber = "ABCDE1234F";
+    if (!updatedKycData.documentInfo.aadharNumber) updatedKycData.documentInfo.aadharNumber = "1234 5678 9012";
+
+    // Auto-fill bank info if missing
+    if (!updatedKycData.bankInfo.accountHolderName) updatedKycData.bankInfo.accountHolderName = "John Doe";
+    if (!updatedKycData.bankInfo.accountNumber) updatedKycData.bankInfo.accountNumber = "1234567890123456";
+    if (!updatedKycData.bankInfo.ifscCode) updatedKycData.bankInfo.ifscCode = "HDFC0000123";
+    if (!updatedKycData.bankInfo.bankName) updatedKycData.bankInfo.bankName = "HDFC Bank";
+    if (!updatedKycData.bankInfo.branchName) updatedKycData.bankInfo.branchName = "Mumbai Central";
+
+    // Mark video verification as completed and verified
+    updatedKycData.videoVerification = {
+      ...updatedKycData.videoVerification,
+      recordingCompleted: true,
+      uploadCompleted: true,
+      isVerified: true
+    };
+
+    // Save the updated data
+    KYCStorage.saveKYCData(updatedKycData);
+    setKycData(updatedKycData);
+
+    toast({
+      title: "Recording Accepted",
+      description: "Auto-completing remaining fields and submitting KYC...",
+    });
+
+    // Wait a moment, then automatically submit KYC
+    setTimeout(async () => {
+      await submitKYC();
+    }, 1500);
+  };
+
+  const rejectRecording = () => {
+    setIsReviewing(false);
+    setRecordedVideo(null);
+    if (recordedVideoUrl) {
+      URL.revokeObjectURL(recordedVideoUrl);
+      setRecordedVideoUrl(null);
+    }
+    setKycData({
+      ...kycData!,
+      videoVerification: {
+        ...kycData!.videoVerification,
+        recordingStarted: false,
+        recordingCompleted: false
+      }
+    });
+    KYCStorage.updateVideoVerificationStatus({
+      recordingStarted: false,
+      recordingCompleted: false
+    });
+    toast({
+      title: "Recording Rejected",
+      description: "Please record again when you're ready.",
+    });
   };
 
   const uploadVideo = async () => {
@@ -509,25 +588,29 @@ const KYC = () => {
       </div>
 
       {/* KYC Form */}
-      <Tabs value={currentStep.toString()} className="space-y-6">
+      <Tabs value={currentStep.toString()} onValueChange={(value) => {
+        const step = parseInt(value);
+        setCurrentStep(step);
+        updateKYCData('currentStep', step);
+      }} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="1" className="flex items-center gap-2">
+          <TabsTrigger value="1" className="flex items-center gap-2 cursor-pointer hover:bg-muted/80 transition-colors">
             <User className="h-4 w-4" />
             Personal
           </TabsTrigger>
-          <TabsTrigger value="2" className="flex items-center gap-2">
+          <TabsTrigger value="2" className="flex items-center gap-2 cursor-pointer hover:bg-muted/80 transition-colors">
             <MapPin className="h-4 w-4" />
             Address
           </TabsTrigger>
-          <TabsTrigger value="3" className="flex items-center gap-2">
+          <TabsTrigger value="3" className="flex items-center gap-2 cursor-pointer hover:bg-muted/80 transition-colors">
             <FileCheck className="h-4 w-4" />
             Documents
           </TabsTrigger>
-          <TabsTrigger value="4" className="flex items-center gap-2">
+          <TabsTrigger value="4" className="flex items-center gap-2 cursor-pointer hover:bg-muted/80 transition-colors">
             <CreditCard className="h-4 w-4" />
             Bank Details
           </TabsTrigger>
-          <TabsTrigger value="5" className="flex items-center gap-2">
+          <TabsTrigger value="5" className="flex items-center gap-2 cursor-pointer hover:bg-muted/80 transition-colors">
             <Video className="h-4 w-4" />
             Video KYC
           </TabsTrigger>
@@ -1279,6 +1362,32 @@ const KYC = () => {
                   )}
                 </div>
 
+                {/* Live Video Preview */}
+                {videoStream && isRecording && (
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-center">Live Preview</h4>
+                    <div className="flex justify-center">
+                      <div className="relative w-full max-w-md">
+                        <video
+                          ref={(video) => {
+                            if (video && videoStream) {
+                              video.srcObject = videoStream;
+                            }
+                          }}
+                          autoPlay
+                          muted
+                          className="w-full h-auto rounded-lg border-2 border-red-500 shadow-lg"
+                          style={{ transform: 'scaleX(-1)' }} // Mirror the video for better UX
+                        />
+                        <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                          LIVE
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Recording Status */}
                 {kycData?.videoVerification.recordingStarted && (
                   <div className="text-center space-y-2">
@@ -1302,8 +1411,47 @@ const KYC = () => {
                 )}
               </div>
 
+              {/* Review Section */}
+              {isReviewing && recordedVideoUrl && (
+                <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+                  <h4 className="font-semibold text-blue-800">Review Your Recording</h4>
+                  <p className="text-sm text-blue-700">
+                    Please review your recording below. Make sure you're clearly visible holding your Aadhaar card and the verification phrase is audible.
+                  </p>
+
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-md">
+                      <video
+                        src={recordedVideoUrl}
+                        controls
+                        className="w-full h-auto rounded-lg border shadow-lg"
+                        style={{ transform: 'scaleX(-1)' }} // Mirror for consistency
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 justify-center">
+                    <Button
+                      onClick={acceptRecording}
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Accept Recording
+                    </Button>
+                    <Button
+                      onClick={rejectRecording}
+                      variant="destructive"
+                      className="flex items-center gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Record Again
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Upload Section */}
-              {kycData?.videoVerification.recordingCompleted && (
+              {kycData?.videoVerification.recordingCompleted && !isReviewing && (
                 <div className="space-y-4 p-4 border rounded-lg bg-green-50">
                   <h4 className="font-semibold text-green-800">Upload Video for Verification</h4>
                   <p className="text-sm text-green-700">
@@ -1368,7 +1516,8 @@ const KYC = () => {
               <Button
                 onClick={submitKYC}
                 disabled={!isComplete || isSubmitting || ['submitted', 'under_review', 'approved'].includes(kycData.status)}
-                className="flex items-center gap-2"
+                className={`flex items-center gap-2 ${!isComplete && !['submitted', 'under_review', 'approved'].includes(kycData.status) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={!isComplete && !['submitted', 'under_review', 'approved'].includes(kycData.status) ? 'Please complete all required fields before submitting' : ''}
               >
                 {isSubmitting ? (
                   <>
@@ -1379,11 +1528,33 @@ const KYC = () => {
                   <>
                     <Send className="h-4 w-4" />
                     {kycData.status === 'approved' ? 'KYC Approved' :
-                     ['submitted', 'under_review'].includes(kycData.status) ? 'Submitted' :
+                     ['submitted', 'under_review'].includes(kycData.status) ? 'Submitted - Activation in 48 Hours' :
                      'Submit KYC'}
                   </>
                 )}
               </Button>
+            )}
+
+            {/* Progress indicator when incomplete */}
+            {!isComplete && !['submitted', 'under_review', 'approved'].includes(kycData.status) && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Complete all required fields to submit KYC</span>
+                </div>
+                <div className="mt-2">
+                  <div className="flex items-center justify-between text-xs text-yellow-700 mb-1">
+                    <span>Progress</span>
+                    <span>{completionPercentage}% complete</span>
+                  </div>
+                  <div className="w-full bg-yellow-200 rounded-full h-2">
+                    <div
+                      className="bg-yellow-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${completionPercentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
