@@ -140,13 +140,6 @@ export const ProfileDropdown = ({
           <span>Wallet</span>
         </DropdownMenuItem>
 
-        {/* Notifications */}
-        <DropdownMenuItem className="cursor-pointer">
-          <Bell className="h-4 w-4 mr-2" />
-          <span>Notifications</span>
-          <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0.5">3</Badge>
-        </DropdownMenuItem>
-
         <DropdownMenuSeparator />
 
         {/* Logout */}

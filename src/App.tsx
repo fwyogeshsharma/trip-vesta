@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { InvestmentSidebar } from "@/components/InvestmentSidebar";
 import { ProfileDropdown } from "@/components/ProfileDropdown";
+import { NotificationBell } from "@/components/NotificationBell";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { Moon, Sun } from "lucide-react";
@@ -37,6 +38,7 @@ const AppContent = () => {
                 <header className="h-12 flex items-center justify-between border-b bg-background px-4">
                   <h2 className="font-semibold text-lg">Investment Portal</h2>
                   <div className="flex items-center gap-2">
+                    <NotificationBell />
                     <Button
                       variant="ghost"
                       size="sm"
