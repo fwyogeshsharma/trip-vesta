@@ -22,15 +22,10 @@ import {
   Flag
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { PaymentService } from "@/services/paymentService";
+// Removed PaymentService import - directing users to production
 import { useWallet } from "@/contexts/WalletContext";
 
-// Declare Razorpay global interface
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
+// Razorpay integration removed - users directed to production for payments
 
 const Wallet = () => {
   const { toast } = useToast();
@@ -44,6 +39,7 @@ const Wallet = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<number | null>(null);
   const [investmentPermission, setInvestmentPermission] = useState(true);
+  const [isProductionDialogOpen, setIsProductionDialogOpen] = useState(false);
 
   // Add account form
   const [newAccountData, setNewAccountData] = useState({
@@ -102,22 +98,7 @@ const Wallet = () => {
     }
   ]);
 
-  // Load Razorpay script
-  useEffect(() => {
-    const loadRazorpayScript = () => {
-      return new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => resolve(true);
-        script.onerror = () => resolve(false);
-        document.body.appendChild(script);
-      });
-    };
-
-    if (!window.Razorpay) {
-      loadRazorpayScript();
-    }
-  }, []);
+  // Removed Razorpay script loading - directing users to production
 
   const handleSetActiveAccount = (accountId: number) => {
     setBankAccounts(prev =>
@@ -156,115 +137,12 @@ const Wallet = () => {
       return;
     }
 
-    if (!window.Razorpay) {
-      toast({
-        title: "Payment Gateway Error",
-        description: "Payment gateway is not loaded. Please refresh and try again.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsProcessingPayment(true);
-
-    try {
-      // Create order on your backend
-      const orderResponse = await PaymentService.createOrder({
-        amount: amountToAdd,
-        currency: "INR",
-        receipt: `wallet_topup_${Date.now()}`
-      });
-
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_1DP5mmOlF5G5ag", // Use your Razorpay Key ID
-        amount: amountToAdd * 100, // Amount in paisa (multiply by 100)
-        currency: "INR",
-        name: "InvestPortal",
-        description: "Add funds to wallet",
-        image: "/logo.png", // Add your logo
-        order_id: orderResponse.id,
-        handler: function (response: any) {
-          handlePaymentSuccess(response, amountToAdd);
-        },
-        prefill: {
-          name: "User Name", // Get from user context
-          email: "user@example.com", // Get from user context
-          contact: "9999999999" // Get from user context
-        },
-        notes: {
-          address: "InvestPortal Corporate Office"
-        },
-        theme: {
-          color: "#3B82F6" // Your primary color
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessingPayment(false);
-            toast({
-              title: "Payment Cancelled",
-              description: "Payment was cancelled by user",
-              variant: "destructive"
-            });
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-
-    } catch (error) {
-      setIsProcessingPayment(false);
-      toast({
-        title: "Payment Failed",
-        description: "Failed to initiate payment. Please try again.",
-        variant: "destructive"
-      });
-    }
+    // Show production redirect dialog
+    setIsProductionDialogOpen(true);
+    setAddAmount("");
   };
 
-  const handlePaymentSuccess = async (response: any, amountToAdd: number) => {
-    try {
-      // Verify payment signature on backend (CRITICAL for production)
-      const verificationResult = await PaymentService.verifyPayment({
-        razorpay_order_id: response.razorpay_order_id,
-        razorpay_payment_id: response.razorpay_payment_id,
-        razorpay_signature: response.razorpay_signature
-      });
-
-      if (verificationResult.success) {
-        // Update wallet balance only after successful verification
-        addToBalance(amountToAdd);
-
-        // Save transaction details
-        await PaymentService.saveTransaction({
-          payment_id: response.razorpay_payment_id,
-          order_id: response.razorpay_order_id,
-          amount: amountToAdd,
-          currency: "INR",
-          status: "success",
-          type: "wallet_topup",
-          timestamp: new Date().toISOString()
-        });
-
-        toast({
-          title: "Payment Successful",
-          description: `₹${amountToAdd.toLocaleString()} has been added to your wallet`,
-        });
-      } else {
-        throw new Error("Payment verification failed");
-      }
-    } catch (error) {
-      console.error("Payment verification error:", error);
-      toast({
-        title: "Payment Verification Failed",
-        description: "Payment could not be verified. Please contact support.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessingPayment(false);
-      setAddAmount("");
-    }
-  };
+  // Removed payment success handler - users directed to production
 
   const handleWithdraw = () => {
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
@@ -742,6 +620,47 @@ const Wallet = () => {
               Cancel
             </Button>
             <Button onClick={handleEditAccount}>Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Production Redirect Dialog */}
+      <Dialog open={isProductionDialogOpen} onOpenChange={setIsProductionDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              🚧 Demo Site - Payment Not Available
+            </DialogTitle>
+            <DialogDescription>
+              This is a demonstration version of the investment portal.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <h3 className="font-semibold text-yellow-800 mb-2">
+                Ready to Make Real Investments?
+              </h3>
+              <p className="text-yellow-700 text-sm mb-3">
+                To add funds to your wallet and start investing, please visit our production site where secure payment processing is available.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-yellow-600">
+                <Shield className="h-4 w-4" />
+                <span>Secure payments powered by industry-standard encryption</span>
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                Continue exploring the demo or switch to production for real transactions.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <Button
+              onClick={() => setIsProductionDialogOpen(false)}
+              className="w-full"
+            >
+              Continue Demo
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
