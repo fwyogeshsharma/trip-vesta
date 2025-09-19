@@ -29,8 +29,8 @@ interface ProfileDropdownProps {
 }
 
 export const ProfileDropdown = ({
-  userEmail = "yogesh.sharma@faberwork.com",
-  userName = "Yogesh Sharma"
+  userEmail = "amit.patel@faberwork.com",
+  userName = "Amit Patel"
 }: ProfileDropdownProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
