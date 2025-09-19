@@ -64,6 +64,30 @@ const PROJECT_LEADERS = [
   'Arjun Agarwal', 'Deepika Joshi', 'Suresh Iyer', 'Meera Bansal'
 ];
 
+// Truck images available in public/manage-trip folder
+const TRUCK_IMAGES = [
+  'big-container.svg',
+  'container.svg',
+  'dumper.svg',
+  'openTruck.svg',
+  'semi-bed-trailer.svg',
+  'tanker.svg',
+  'trailer.svg',
+  'truck.svg'
+];
+
+// Trip management companies
+const MANAGEMENT_COMPANIES = [
+  {
+    name: 'RR',
+    image: 'rr_full_transp_old.png'
+  },
+  {
+    name: 'Darcl',
+    image: 'CJ-Darcl-01.png'
+  }
+];
+
 // Utility functions for random data generation
 const getRandomItem = <T>(array: T[]): T => {
   return array[Math.floor(Math.random() * array.length)];
@@ -140,7 +164,9 @@ const generateFallbackTripData = (index: number): Partial<TripData> => {
     exitStrategy: 'Trip completion and delivery confirmation',
     pastPerformance: `${getRandomNumber(95, 99)}% on-time delivery rate`,
     tags: ['india', 'transport', getRandomItem(['logistics', 'delivery', 'freight', 'cargo'])],
-    companyLogo: selectedCompany.logo
+    companyLogo: selectedCompany.logo,
+    truckImage: getRandomItem(TRUCK_IMAGES),
+    managedBy: getRandomItem(MANAGEMENT_COMPANIES)
   };
 };
 
@@ -159,6 +185,11 @@ export interface TripData {
   description: string;
   highlights: string[];
   insured: boolean;
+  truckImage: string;
+  managedBy: {
+    name: string;
+    image: string;
+  };
   // Additional fields from Excel
   startDate?: string;
   category?: string;
@@ -295,7 +326,15 @@ export const readTripExcelFile = async (filePath: string): Promise<TripData[]> =
         tags: safeParseArray(
           rowData['Tags'],
           fallbackData.tags!
-        )
+        ),
+        truckImage: safeParseString(
+          rowData['Truck Image'],
+          fallbackData.truckImage!
+        ),
+        managedBy: {
+          name: safeParseString(rowData['Managed By'], fallbackData.managedBy!.name),
+          image: safeParseString(rowData['Managed By Image'], fallbackData.managedBy!.image)
+        }
       };
 
       return tripData;

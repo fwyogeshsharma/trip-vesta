@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TripMilestones } from "@/components/TripMilestones";
 import {
   MapPin,
@@ -305,6 +306,10 @@ const Trips = () => {
       );
     }
     return null;
+  };
+
+  const getTruckNameFromImage = (imageName: string): string => {
+    return imageName.replace(/\.[^/.]+$/, "").replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()).trim();
   };
 
   const getProgress = (current: number, target: number) => {
@@ -2280,6 +2285,27 @@ const Trips = () => {
                       } ${isLocked ? 'opacity-60 bg-muted/30' : ''} ${
                         isProcessing ? 'ring-2 ring-warning/50 bg-warning/5' : ''
                       }`}>
+                        {/* Trip managed by section at top center */}
+                        <div className="flex items-center justify-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                          <span className="text-xs text-muted-foreground">Trip managed by:</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex-shrink-0 cursor-pointer">
+                                  <img
+                                    src={`/${trip.managedBy.image}`}
+                                    alt={`Managed by ${trip.managedBy.name}`}
+                                    className="w-6 h-6 object-contain"
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{trip.managedBy.name}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+
                         <div className="flex items-center gap-3">
                           <Checkbox
                             checked={selectedTrips.has(trip.id)}
@@ -2304,6 +2330,22 @@ const Trips = () => {
                             <div className="flex items-center justify-between gap-2">
                               <h3 className="font-semibold text-sm truncate">{trip.name}</h3>
                               <div className="flex items-center gap-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex-shrink-0 cursor-pointer">
+                                        <img
+                                          src={`/manage-trip/${trip.truckImage}`}
+                                          alt={`${getTruckNameFromImage(trip.truckImage)} truck`}
+                                          className="w-12 h-12 object-contain"
+                                        />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{getTruckNameFromImage(trip.truckImage)}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                                 {getStatusBadge(trip.status)}
                                 {getInsuredBadge(trip.insured)}
                               </div>
@@ -2355,6 +2397,27 @@ const Trips = () => {
                 isProcessing ? 'ring-2 ring-warning/50 bg-warning/5' : ''
               }`}>
                 <CardHeader className="pb-2 p-3">
+                  {/* Trip managed by section at top center */}
+                  <div className="flex items-center justify-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                    <span className="text-sm text-muted-foreground">Trip managed by:</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex-shrink-0 cursor-pointer">
+                            <img
+                              src={`/${trip.managedBy.image}`}
+                              alt={`Managed by ${trip.managedBy.name}`}
+                              className="w-8 h-8 object-contain"
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{trip.managedBy.name}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
                   <div className="space-y-2">
                     <div className="flex items-start gap-2">
                       <Checkbox
@@ -2387,6 +2450,22 @@ const Trips = () => {
                             )}
                           </div>
                           <div className="ml-2 flex-shrink-0 flex items-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex-shrink-0 cursor-pointer">
+                                    <img
+                                      src={`/manage-trip/${trip.truckImage}`}
+                                      alt={`${getTruckNameFromImage(trip.truckImage)} truck`}
+                                      className="w-16 h-16 object-contain"
+                                    />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{getTruckNameFromImage(trip.truckImage)}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             {getStatusBadge(trip.status)}
                             {getInsuredBadge(trip.insured)}
                           </div>
