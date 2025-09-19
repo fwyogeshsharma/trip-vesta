@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  History as HistoryIcon,
+  BookOpen,
   TrendingUp,
   TrendingDown,
   Filter,
@@ -15,23 +15,23 @@ import {
   CalendarRange
 } from "lucide-react";
 
-// Mock transaction data
+// Mock transaction data with actual company and trip names
 const transactions = [
   {
     id: 1,
     type: "investment",
     amount: 207500,
-    description: "Investment in Santorini Sunset Trip",
+    description: "Investment in Berger Paints Transportation (Delhi to Mumbai)",
     date: "2024-09-15",
     status: "completed",
-    tripName: "Santorini Sunset",
+    tripName: "Berger Paints Transportation",
     category: "trip_investment"
   },
   {
     id: 2,
     type: "deposit",
     amount: 415000,
-    description: "Wallet deposit from Chase Bank ****1234",
+    description: "Wallet deposit from HDFC Bank ****1234",
     date: "2024-09-10",
     status: "completed",
     category: "wallet"
@@ -40,27 +40,27 @@ const transactions = [
     id: 3,
     type: "profit",
     amount: 37350,
-    description: "Profit from African Safari Trip",
+    description: "Profit from Dynamic Cables Transportation (Mumbai to Bangalore)",
     date: "2024-09-05",
     status: "completed",
-    tripName: "African Safari",
+    tripName: "Dynamic Cables Transportation",
     category: "profit"
   },
   {
     id: 4,
     type: "investment",
     amount: 99600,
-    description: "Investment in Berger Paints",
+    description: "Investment in Varun Beverages Transportation (Chennai to Kolkata)",
     date: "2024-08-28",
     status: "completed",
-    tripName: "Berger Paints",
+    tripName: "Varun Beverages Transportation",
     category: "trip_investment"
   },
   {
     id: 5,
     type: "withdrawal",
     amount: 83000,
-    description: "Withdrawal to Bank of America ****5678",
+    description: "Withdrawal to State Bank of India ****5678",
     date: "2024-08-25",
     status: "completed",
     category: "wallet"
@@ -69,25 +69,54 @@ const transactions = [
     id: 6,
     type: "profit",
     amount: 66400,
-    description: "Profit from Asian Paints",
+    description: "Profit from Emami Transportation (Pune to Hyderabad)",
     date: "2024-08-20",
     status: "completed",
-    tripName: "Asian Paints",
+    tripName: "Emami Transportation",
     category: "profit"
   },
   {
     id: 7,
     type: "investment",
     amount: 290500,
-    description: "Investment in Coca Cola",
+    description: "Investment in Greenply Transportation (Delhi to Chennai)",
     date: "2024-08-15",
     status: "pending",
-    tripName: "Coca Cola",
+    tripName: "Greenply Transportation",
     category: "trip_investment"
+  },
+  {
+    id: 8,
+    type: "profit",
+    amount: 45200,
+    description: "Profit from Balaji Transportation (Mumbai to Pune)",
+    date: "2024-08-10",
+    status: "completed",
+    tripName: "Balaji Transportation",
+    category: "profit"
+  },
+  {
+    id: 9,
+    type: "investment",
+    amount: 156000,
+    description: "Investment in Manishankar Oils Transportation (Bangalore to Chennai)",
+    date: "2024-08-05",
+    status: "completed",
+    tripName: "Manishankar Oils Transportation",
+    category: "trip_investment"
+  },
+  {
+    id: 10,
+    type: "deposit",
+    amount: 250000,
+    description: "Wallet deposit from ICICI Bank ****9876",
+    date: "2024-08-01",
+    status: "completed",
+    category: "wallet"
   }
 ];
 
-const History = () => {
+const AccountLedger = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -181,9 +210,9 @@ const History = () => {
   return (
     <div className="flex-1 space-y-6 p-6 bg-background text-foreground">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Transaction History</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Account Ledger</h1>
         <div className="flex items-center space-x-2">
-          <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+          <BookOpen className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">{filteredTransactions.length} transactions</span>
         </div>
       </div>
@@ -387,4 +416,4 @@ const History = () => {
   );
 };
 
-export default History;
+export default AccountLedger;

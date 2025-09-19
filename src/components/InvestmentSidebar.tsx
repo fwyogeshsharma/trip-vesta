@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   Wallet,
   MapPin,
-  History,
+  BookOpen,
   Settings,
   TrendingUp
 } from "lucide-react";
@@ -22,7 +22,7 @@ const userItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Wallet", url: "/wallet", icon: Wallet },
   { title: "Trips", url: "/trips", icon: MapPin },
-  { title: "History", url: "/history", icon: History },
+  { title: "Account Ledger", url: "/history", icon: BookOpen },
 ];
 
 const adminItems = [

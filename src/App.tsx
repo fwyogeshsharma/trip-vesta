@@ -14,7 +14,7 @@ import { Moon, Sun } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
 import Wallet from "./pages/Wallet";
 import Trips from "./pages/Trips";
-import History from "./pages/History";
+import AccountLedger from "./pages/History";
 import Admin from "./pages/Admin";
 import KYC from "./pages/KYC";
 import Settings from "./pages/Settings";
@@ -59,7 +59,7 @@ const AppContent = () => {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/wallet" element={<Wallet />} />
                   <Route path="/trips" element={<Trips />} />
-                  <Route path="/history" element={<History />} />
+                  <Route path="/history" element={<AccountLedger />} />
                   <Route path="/kyc" element={<KYC />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/admin" element={<Admin />} />
