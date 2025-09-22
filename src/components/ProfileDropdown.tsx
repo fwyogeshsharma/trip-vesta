@@ -22,6 +22,7 @@ import {
   ChevronDown
 } from "lucide-react";
 import { KYCStorage } from "@/utils/kycStorage";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProfileDropdownProps {
   userEmail?: string;
@@ -34,6 +35,7 @@ export const ProfileDropdown = ({
 }: ProfileDropdownProps) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const { logout } = useAuth();
 
   // Get KYC status
   const kycData = KYCStorage.getKYCData();
@@ -68,8 +70,7 @@ export const ProfileDropdown = ({
   };
 
   const handleLogout = () => {
-    // In a real app, you would clear auth tokens here
-    console.log('Logging out...');
+    logout();
     setIsOpen(false);
   };
 

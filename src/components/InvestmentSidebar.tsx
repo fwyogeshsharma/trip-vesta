@@ -4,8 +4,8 @@ import {
   Wallet,
   MapPin,
   BookOpen,
-  Settings,
-  TrendingUp
+  TrendingUp,
+  BarChart3
 } from "lucide-react";
 import {
   Sidebar,
@@ -17,8 +17,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
 
-const userItems = [
+const investorItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Wallet", url: "/wallet", icon: Wallet },
   { title: "Trips", url: "/trips", icon: MapPin },
@@ -26,12 +27,13 @@ const userItems = [
 ];
 
 const adminItems = [
-  { title: "Admin Panel", url: "/admin", icon: Settings },
+  { title: "Admin Dashboard", url: "/admin", icon: BarChart3 },
 ];
 
 export function InvestmentSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { hasInvestorAccess, hasIPAdminAccess } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
@@ -46,45 +48,51 @@ export function InvestmentSidebar() {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <TrendingUp className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">InvestPortal</span>
+            <span className="font-bold text-lg">Trip Vesta</span>
           </div>
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Investment</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {userItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end={item.url === "/"}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Investment Section - Only show if user has Investor role */}
+        {hasInvestorAccess() && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Investment Portal</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {investorItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} end={item.url === "/"}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Admin Section - Only show if user has IP Admin role */}
+        {hasIPAdminAccess() && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin Panel</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );

@@ -472,24 +472,62 @@ const Dashboard = () => {
 
   return (
     <div className="flex-1 space-y-6 p-6 bg-background text-foreground">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <div className="flex items-center space-x-2">
-          <Activity className="h-4 w-4 text-success" />
-          <span className="text-sm text-muted-foreground">System Online</span>
+      {/* Welcome Banner */}
+      <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-6 text-white">
+        <div className="relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Welcome to Trip Vesta</h1>
+              <p className="text-primary-foreground/80 text-lg">
+                Your Gateway to Smart Investment Opportunities
+              </p>
+              <div className="flex items-center gap-6 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  <span>28 Verified Investors</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>₹125.78 Cr Portfolio Value</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  <span>23 Active Opportunities</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-green-300" />
+              <span className="text-sm">All Systems Online</span>
+            </div>
+          </div>
         </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/10" />
+        <div className="absolute -top-4 -right-4 w-32 h-32 bg-white/10 rounded-full" />
+        <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-white/5 rounded-full" />
       </div>
 
       {/* Metrics Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((metric, index) => (
-          <MetricCard key={index} {...metric} />
-        ))}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Portfolio Overview</h2>
+          <div className="h-px bg-border flex-1" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {metrics.map((metric, index) => (
+            <MetricCard key={index} {...metric} />
+          ))}
+        </div>
       </div>
 
       {/* Analytics Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Investment Growth Chart */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Investment Analytics</h2>
+          <div className="h-px bg-border flex-1" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Investment Growth Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -572,10 +610,16 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Monthly Returns */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Performance Metrics</h2>
+          <div className="h-px bg-border flex-1" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Monthly Returns */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -636,11 +680,17 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* Recent Trips and Top Investors Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Recent Trips */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Investment Community</h2>
+          <div className="h-px bg-border flex-1" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Recent Trips */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -730,10 +780,16 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* All Verified Investors */}
-      <Card>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Complete Investor Directory</h2>
+          <div className="h-px bg-border flex-1" />
+        </div>
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -774,6 +830,7 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };
