@@ -24,12 +24,14 @@ import {
 import { useToast } from "@/hooks/use-toast";
 // Removed PaymentService import - directing users to production
 import { useWallet } from "@/contexts/WalletContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Razorpay integration removed - users directed to production for payments
 
 const Wallet = () => {
   const { toast } = useToast();
   const { walletData, addToBalance, withdrawFromBalance } = useWallet();
+  const { user } = useAuth();
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -251,7 +253,7 @@ const Wallet = () => {
   return (
     <div className="flex-1 space-y-6 p-6 bg-background text-foreground">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Amit Patel's Wallet</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{user?.name || "User"}'s Wallet</h1>
         <div className="flex items-center space-x-2">
           <Shield className="h-4 w-4 text-success" />
           <span className="text-sm text-muted-foreground">Secure</span>

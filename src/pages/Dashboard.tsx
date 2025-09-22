@@ -550,7 +550,16 @@ const Dashboard = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="month" />
-                <YAxis />
+                <YAxis
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) {
+                      return `${(value / 1000000).toFixed(1)}M`;
+                    } else if (value >= 1000) {
+                      return `${(value / 1000).toFixed(0)}K`;
+                    }
+                    return value.toString();
+                  }}
+                />
                 <Tooltip 
                   formatter={(value, name) => [
                     `₹${Number(value).toLocaleString()}`, 

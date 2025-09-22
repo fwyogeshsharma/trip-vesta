@@ -42,8 +42,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { TripLockService } from "@/services/tripLockService";
-import { useTripData } from "@/hooks/useTripData";
-import { TripData } from "@/utils/excelReader";
+// import { useTripData } from "@/hooks/useTripData"; // Removed - Available Trips disabled
+import { useApiTrips } from "@/hooks/useApiTrips";
+// import { TripData } from "@/utils/excelReader"; // Removed - Available Trips disabled
 import { InvestmentStorage, InvestmentData } from "@/utils/investmentStorage";
 import { useWallet } from "@/contexts/WalletContext";
 
@@ -57,80 +58,7 @@ declare global {
 
 // Trip data loaded from Excel file
 
-const myInvestments = [
-  {
-    id: 1,
-    tripName: "Emami Transportation",
-    companyLogo: "/clients/emami.png",
-    amount: 125000,
-    investedDate: "2024-09-15",
-    tripStartDate: "2024-09-20",
-    expectedEndDate: "2024-12-01",
-    status: "active",
-    progress: 75,
-    daysRemaining: 47,
-    profitCredited: 0, // Active trips don't have profit yet
-    profitGain: { amount: 8500, percentage: 60 }, // 60% profit, amount in 5k-12k range
-    milestones: [
-      { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-20" },
-      { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-25" },
-      { id: 3, name: "Travel Arrangements", icon: Plane, status: "completed" as const, date: "2024-10-01" },
-      { id: 4, name: "Accommodation Ready", icon: Building, status: "completed" as const, date: "2024-10-05" },
-      { id: 5, name: "Service Delivery", icon: MapIcon, status: "current" as const, date: "2024-10-15" },
-      { id: 6, name: "Trip Completion", icon: CheckCircle, status: "pending" as const, date: "2024-11-20" },
-      { id: 7, name: "Invoice Processing", icon: FileText, status: "pending" as const, date: "2024-11-25" },
-      { id: 8, name: "Returns Distributed", icon: DollarSign, status: "pending" as const, date: "2024-12-01" }
-    ]
-  },
-  {
-    id: 2,
-    tripName: "Dynamic Cables Transportation",
-    companyLogo: "/clients/dynamic-cables.png",
-    amount: 180000,
-    investedDate: "2024-08-20",
-    tripStartDate: "2024-08-25",
-    expectedEndDate: "2024-10-20",
-    status: "completed",
-    progress: 100,
-    daysRemaining: 0,
-    profitCredited: 11500, // Profit in 5k-12k range
-    profitGain: { amount: Math.floor(11500 * 0.60), percentage: 60 }, // 60% of actual profit (₹6,900)
-    milestones: [
-      { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-08-25" },
-      { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-08-30" },
-      { id: 3, name: "Travel Arrangements", icon: Plane, status: "completed" as const, date: "2024-09-05" },
-      { id: 4, name: "Accommodation Ready", icon: Building, status: "completed" as const, date: "2024-09-10" },
-      { id: 5, name: "Service Delivery", icon: MapIcon, status: "completed" as const, date: "2024-09-25" },
-      { id: 6, name: "Trip Completion", icon: CheckCircle, status: "completed" as const, date: "2024-10-15" },
-      { id: 7, name: "Invoice Processing", icon: FileText, status: "completed" as const, date: "2024-10-18" },
-      { id: 8, name: "Returns Distributed", icon: DollarSign, status: "completed" as const, date: "2024-10-20" }
-    ]
-  },
-  {
-    id: 3,
-    tripName: "Berger Paints Transportation",
-    companyLogo: "/clients/berger.png",
-    amount: 85000,
-    investedDate: "2024-08-28",
-    tripStartDate: "2024-09-01",
-    expectedEndDate: "2024-12-15",
-    status: "active",
-    progress: 60,
-    daysRemaining: 61,
-    profitCredited: 0, // Active trips don't have profit yet
-    profitGain: { amount: 6800, percentage: 60 }, // 60% profit, amount in 5k-12k range
-    milestones: [
-      { id: 1, name: "Trip Started", icon: PlayCircle, status: "completed" as const, date: "2024-09-01" },
-      { id: 2, name: "Bookings Confirmed", icon: Calendar, status: "completed" as const, date: "2024-09-08" },
-      { id: 3, name: "Travel Arrangements", icon: Plane, status: "completed" as const, date: "2024-09-15" },
-      { id: 4, name: "Accommodation Ready", icon: Building, status: "current" as const, date: "2024-10-20" },
-      { id: 5, name: "Service Delivery", icon: MapIcon, status: "pending" as const, date: "2024-11-01" },
-      { id: 6, name: "Trip Completion", icon: CheckCircle, status: "pending" as const, date: "2024-12-01" },
-      { id: 7, name: "Invoice Processing", icon: FileText, status: "pending" as const, date: "2024-12-10" },
-      { id: 8, name: "Returns Distributed", icon: DollarSign, status: "pending" as const, date: "2024-12-15" }
-    ]
-  }
-];
+// Static demo investments removed - now using only dynamic user investments
 
 const Trips = () => {
   const { walletData, deductFromBalance } = useWallet();
@@ -166,8 +94,148 @@ const Trips = () => {
   }
   const { toast } = useToast();
 
-  // Load trip data from Excel file
-  const { trips: availableTrips, loading: tripsLoading, error: tripsError } = useTripData();
+  // Load trip data from Excel file (investment trips)
+  // Removed useTripData hook since Available Trips section is disabled
+  // const { trips: availableTrips, loading: tripsLoading, error: tripsError } = useTripData();
+  const tripsLoading = false;
+  const tripsError = null;
+
+  // Load real trip data from API
+  const {
+    trips: apiTrips,
+    loading: apiTripsLoading,
+    error: apiTripsError,
+    refetch: refetchApiTrips,
+    totalTrips: totalApiTrips,
+    currentPage: apiCurrentPage,
+    totalPages: totalApiPages
+  } = useApiTrips();
+
+  // API trip filters
+  const [apiTripFilters, setApiTripFilters] = useState({
+    startRoute: '',
+    endRoute: '',
+    tripName: '',
+    page: 1,
+    max_results: 10
+  });
+
+  // Expanded trip details state
+  const [expandedTrips, setExpandedTrips] = useState<Set<string>>(new Set());
+
+  // Live trips selection state
+  const [selectedLiveTrips, setSelectedLiveTrips] = useState<Set<string>>(new Set());
+  const [showSelectedTripsTable, setShowSelectedTripsTable] = useState(false);
+
+  const toggleTripExpansion = (tripId: string) => {
+    const newExpanded = new Set(expandedTrips);
+    if (newExpanded.has(tripId)) {
+      newExpanded.delete(tripId);
+    } else {
+      newExpanded.add(tripId);
+    }
+    setExpandedTrips(newExpanded);
+  };
+
+  // Helper functions for auto-complete
+  const getApiTripStartLocations = (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 1) return [];
+
+    const allStartLocations = apiTrips
+      .map(trip => trip.pickup?.city)
+      .filter(city => city && city.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter((city, index, self) => self.indexOf(city) === index) // Remove duplicates
+      .slice(0, 5); // Limit to 5 suggestions
+
+    return allStartLocations;
+  };
+
+  const getApiTripEndLocations = (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 1) return [];
+
+    const allEndLocations = apiTrips
+      .map(trip => trip.delivery?.city)
+      .filter(city => city && city.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter((city, index, self) => self.indexOf(city) === index) // Remove duplicates
+      .slice(0, 5); // Limit to 5 suggestions
+
+    return allEndLocations;
+  };
+
+  const getApiTripNames = (searchTerm: string) => {
+    if (!searchTerm || searchTerm.length < 1) return [];
+
+    const allTripNames = apiTrips
+      .map(trip => trip.materialType)
+      .filter(name => name && name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter((name, index, self) => self.indexOf(name) === index) // Remove duplicates
+      .slice(0, 5); // Limit to 5 suggestions
+
+    return allTripNames;
+  };
+
+  const updateApiFilter = (key: string, value: string) => {
+    setApiTripFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+  };
+
+  // Live trips selection handlers
+  const handleLiveTripSelection = (tripId: string, checked: boolean) => {
+    const newSelected = new Set(selectedLiveTrips);
+    if (checked) {
+      newSelected.add(tripId);
+    } else {
+      newSelected.delete(tripId);
+    }
+    setSelectedLiveTrips(newSelected);
+  };
+
+  const handleSelectAllLiveTrips = (checked: boolean) => {
+    if (checked) {
+      const allTripIds = new Set(filteredApiTrips.map(trip => trip.id));
+      setSelectedLiveTrips(allTripIds);
+    } else {
+      setSelectedLiveTrips(new Set());
+    }
+  };
+
+  const isAllLiveTripsSelected = () => {
+    return filteredApiTrips.length > 0 && filteredApiTrips.every(trip => selectedLiveTrips.has(trip.id));
+  };
+
+  const isSomeLiveTripsSelected = () => {
+    return selectedLiveTrips.size > 0 && selectedLiveTrips.size < filteredApiTrips.length;
+  };
+
+  // Calculate total cost of selected trips
+  const getTotalSelectedCost = () => {
+    return filteredApiTrips
+      .filter(trip => selectedLiveTrips.has(trip.id))
+      .reduce((total, trip) => total + (trip.totalCost || 0), 0);
+  };
+
+  const getSelectedTripsData = () => {
+    return filteredApiTrips.filter(trip => selectedLiveTrips.has(trip.id));
+  };
+
+  // Filter trips based on search criteria
+  const filteredApiTrips = apiTrips.filter(trip => {
+    // Start route filter
+    if (apiTripFilters.startRoute && !trip.pickup?.city?.toLowerCase().includes(apiTripFilters.startRoute.toLowerCase())) {
+      return false;
+    }
+
+    // End route filter
+    if (apiTripFilters.endRoute && !trip.delivery?.city?.toLowerCase().includes(apiTripFilters.endRoute.toLowerCase())) {
+      return false;
+    }
+
+    // Trip name filter (using material type as trip identifier)
+    if (apiTripFilters.tripName && !trip.materialType?.toLowerCase().includes(apiTripFilters.tripName.toLowerCase())) {
+      return false;
+    }
+
+    return true;
+  });
 
   const [selectedTrips, setSelectedTrips] = useState<Set<number>>(new Set());
   // const [investmentAmounts, setInvestmentAmounts] = useState<Record<number, string>>({});
@@ -182,9 +250,7 @@ const Trips = () => {
   const [reservationIds, setReservationIds] = useState<Record<number, string>>({});
 
   // Collapsible milestones state - default collapsed (all IDs in set)
-  const [collapsedMilestones, setCollapsedMilestones] = useState<Set<number>>(
-    new Set(myInvestments.map(inv => inv.id))
-  );
+  const [collapsedMilestones, setCollapsedMilestones] = useState<Set<number>>(new Set());
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -222,21 +288,24 @@ const Trips = () => {
     startDate: '',
     endDate: ''
   });
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false); // Disabled - using Live Trips filters instead
   const [showMyInvestmentsFilters, setShowMyInvestmentsFilters] = useState(false);
+  const [showApiTripFilters, setShowApiTripFilters] = useState(false);
 
   // Load user investments from localStorage on mount
   useEffect(() => {
     const loadInvestments = () => {
-      const investments = InvestmentStorage.getInvestments();
+      // Clear all existing investments since they were based on static data
+      InvestmentStorage.clearAllInvestments();
+
+      // Start with empty investments array
+      const investments: any[] = [];
       setUserInvestments(investments);
 
-      // Resume progress simulation for active investments
-      investments.forEach((investment) => {
-        if (investment.status === "active" && investment.progress < 100) {
-          simulateInvestmentProgress(investment.id, Math.random() * 5000); // Random delay 0-5s
-        }
-      });
+      // Set collapsed milestones for all investments by default
+      setCollapsedMilestones(new Set(investments.map(inv => inv.id)));
+
+      // No need to resume progress simulation since we're starting fresh
     };
 
     loadInvestments();
@@ -705,18 +774,8 @@ const Trips = () => {
     return 0;
   };
 
-  // Filter trips based on selected criteria and only show available/running/active trips
-  // Also exclude trips that have already been invested in
-  const availableStatusTrips = availableTrips.filter(trip =>
-    ['available', 'running', 'active'].includes(trip.status.toLowerCase()) &&
-    !InvestmentStorage.isTripInvested(trip.id)
-  ).map(trip => ({
-    ...trip,
-    // Generate random investor count between 1-5 for display
-    investorCount: Math.floor(Math.random() * 5) + 1,
-    // Add max investment amount (typically 5-10x the minimum investment)
-    maxInvestment: trip.minInvestment * (Math.floor(Math.random() * 6) + 5) // 5x to 10x multiplier
-  }));
+  // Available Trips section disabled - no static trip data
+  const availableStatusTrips: any[] = [];
 
   const filteredTrips = availableStatusTrips.filter(trip => {
     // Status filter
@@ -991,8 +1050,8 @@ const Trips = () => {
     });
   };
 
-  // Combine static demo investments with user's dynamic investments and ensure completed trips have all milestones completed
-  const allInvestments = ensureCompletedMilestonesForCompletedTrips([...myInvestments, ...userInvestments]);
+  // Use only user's dynamic investments and ensure completed trips have all milestones completed
+  const allInvestments = ensureCompletedMilestonesForCompletedTrips([...userInvestments]);
 
   // My Investments filtering and pagination logic
   const filteredMyInvestments = allInvestments.filter(investment => {
@@ -1919,7 +1978,7 @@ const Trips = () => {
           <div className="flex items-center space-x-2">
             <TrendingUp className="h-4 w-4 text-success" />
             <span className="text-sm text-muted-foreground">
-              {tripsLoading ? 'Loading...' : `${filteredTrips.length} of ${availableStatusTrips.length} available trips`}
+              {`${filteredTrips.length} of ${availableStatusTrips.length} available trips`}
             </span>
           </div>
         </div>
@@ -2094,30 +2153,536 @@ const Trips = () => {
       )}
 
       {!tripsLoading && (
-        <Tabs defaultValue="available" className="space-y-4">
+        <Tabs defaultValue="live-trips" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="available">Available Trips</TabsTrigger>
+            <TabsTrigger value="live-trips">Live Trips</TabsTrigger>
+            {/* <TabsTrigger value="available">Available Trips</TabsTrigger> */}
             <TabsTrigger value="my-investments">My Investments</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="available" className="space-y-4">
-          {/* Available Trips Filters */}
+          <TabsContent value="live-trips" className="space-y-4">
+            {/* Live Trips Section */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Live Trips</h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowApiTripFilters(!showApiTripFilters)}
+                  className={`${showApiTripFilters ? 'bg-blue-100 text-blue-700 border-blue-300' : ''}`}
+                >
+                  <Filter className="h-4 w-4" />
+                  Filters
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchApiTrips()}
+                  disabled={apiTripsLoading}
+                >
+                  {apiTripsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Live Trips Filters */}
+            {showApiTripFilters && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Filter Trips</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Start Route Filter */}
+                  <div className="space-y-2">
+                    <Label htmlFor="start-route">Start Route</Label>
+                    <div className="relative">
+                      <Input
+                        id="start-route"
+                        placeholder="Search start location..."
+                        value={apiTripFilters.startRoute}
+                        onChange={(e) => updateApiFilter('startRoute', e.target.value)}
+                      />
+                      {apiTripFilters.startRoute && getApiTripStartLocations(apiTripFilters.startRoute).length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                          {getApiTripStartLocations(apiTripFilters.startRoute).map((location, index) => (
+                            <div
+                              key={index}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                              onClick={() => updateApiFilter('startRoute', location)}
+                            >
+                              {location}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* End Route Filter */}
+                  <div className="space-y-2">
+                    <Label htmlFor="end-route">End Route</Label>
+                    <div className="relative">
+                      <Input
+                        id="end-route"
+                        placeholder="Search end location..."
+                        value={apiTripFilters.endRoute}
+                        onChange={(e) => updateApiFilter('endRoute', e.target.value)}
+                      />
+                      {apiTripFilters.endRoute && getApiTripEndLocations(apiTripFilters.endRoute).length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                          {getApiTripEndLocations(apiTripFilters.endRoute).map((location, index) => (
+                            <div
+                              key={index}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                              onClick={() => updateApiFilter('endRoute', location)}
+                            >
+                              {location}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Trip Name Filter */}
+                  <div className="space-y-2">
+                    <Label htmlFor="trip-name">Trip Name</Label>
+                    <div className="relative">
+                      <Input
+                        id="trip-name"
+                        placeholder="Search trip name..."
+                        value={apiTripFilters.tripName}
+                        onChange={(e) => updateApiFilter('tripName', e.target.value)}
+                      />
+                      {apiTripFilters.tripName && getApiTripNames(apiTripFilters.tripName).length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-32 overflow-y-auto">
+                          {getApiTripNames(apiTripFilters.tripName).map((name, index) => (
+                            <div
+                              key={index}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                              onClick={() => updateApiFilter('tripName', name)}
+                            >
+                              {name}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const resetFilters = {
+                        startRoute: '',
+                        endRoute: '',
+                        tripName: '',
+                        page: 1,
+                        max_results: 10
+                      };
+                      setApiTripFilters(resetFilters);
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            )}
+
+            {/* Live Trips List */}
+            {apiTripsError && (
+              <Card className="border-red-200 bg-red-50">
+                <CardContent className="p-4">
+                  <p className="text-red-600">Error loading trips: {apiTripsError}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {apiTripsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Loading trips...</span>
+              </div>
+            ) : apiTrips.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="text-muted-foreground">No trips found matching your criteria.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {/* Trip Stats */}
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredApiTrips.length} of {totalApiTrips} trips
+                  {(apiTripFilters.startRoute || apiTripFilters.endRoute || apiTripFilters.tripName) &&
+                    ` (${apiTrips.length - filteredApiTrips.length} filtered out)`
+                  }
+                </div>
+
+                {/* Selected Trips Summary Card */}
+                {selectedLiveTrips.size > 0 && (
+                  <Card className="border-2 border-blue-200 bg-blue-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                              {selectedLiveTrips.size} Selected
+                            </Badge>
+                            <span className="font-semibold text-lg text-blue-900">
+                              Total Cost: ₹{getTotalSelectedCost().toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowSelectedTripsTable(!showSelectedTripsTable)}
+                            className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                          >
+                            {showSelectedTripsTable ? (
+                              <>
+                                <ChevronUp className="h-4 w-4 mr-1" />
+                                Hide Details
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4 mr-1" />
+                                Show Details
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedLiveTrips(new Set())}
+                            className="text-red-700 border-red-300 hover:bg-red-100"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Clear All
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Collapsible Table */}
+                      {showSelectedTripsTable && (
+                        <div className="mt-4 border-t border-blue-200 pt-4">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-blue-200">
+                                  <th className="text-left py-2 px-3 font-medium text-blue-900">Trip #</th>
+                                  <th className="text-left py-2 px-3 font-medium text-blue-900">Route</th>
+                                  <th className="text-left py-2 px-3 font-medium text-blue-900">Stage</th>
+                                  <th className="text-left py-2 px-3 font-medium text-blue-900">Vehicle</th>
+                                  <th className="text-right py-2 px-3 font-medium text-blue-900">Cost</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {getSelectedTripsData().map((trip) => (
+                                  <tr key={trip.id} className="border-b border-blue-100 hover:bg-blue-100/50">
+                                    <td className="py-2 px-3 font-mono text-blue-800">#{trip.tripNumber}</td>
+                                    <td className="py-2 px-3 text-blue-800">
+                                      {trip.pickup?.city} → {trip.delivery?.city}
+                                    </td>
+                                    <td className="py-2 px-3">
+                                      <Badge variant="outline" className="text-xs bg-white border-blue-300 text-blue-700">
+                                        {trip.stage}
+                                      </Badge>
+                                    </td>
+                                    <td className="py-2 px-3 text-blue-800">{trip.vehicleNumber}</td>
+                                    <td className="py-2 px-3 text-right font-medium text-blue-800">
+                                      ₹{(trip.totalCost || 0).toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Multi-select Controls */}
+                {filteredApiTrips.length > 0 && (
+                  <div className="flex items-center gap-2 py-2">
+                    <Checkbox
+                      id="select-all-live-trips"
+                      checked={isAllLiveTripsSelected()}
+                      onCheckedChange={handleSelectAllLiveTrips}
+                      className="border-blue-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                    />
+                    <Label htmlFor="select-all-live-trips" className="text-sm font-medium cursor-pointer">
+                      {isAllLiveTripsSelected() ? 'Deselect All' : 'Select All'} ({filteredApiTrips.length} trips)
+                    </Label>
+                  </div>
+                )}
+
+                {/* Sleek Trip Cards */}
+                <div className="grid gap-3">
+                  {filteredApiTrips.map((trip) => (
+                    <Card key={trip.id} className="p-0 hover:shadow-md transition-shadow relative">
+                      {/* Insured Badge */}
+                      <Badge
+                        variant="outline"
+                        className="absolute top-2 right-2 bg-green-100 text-green-700 border-green-300 text-xs"
+                      >
+                        🛡️ Insured
+                      </Badge>
+
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          {/* Left Section - Trip Info */}
+                          <div className="flex items-center gap-4">
+                            {/* Selection Checkbox */}
+                            <Checkbox
+                              checked={selectedLiveTrips.has(trip.id)}
+                              onCheckedChange={(checked) => handleLiveTripSelection(trip.id, checked as boolean)}
+                              className="border-blue-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                            />
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    trip.stage === 'Trip Completed' ? 'bg-green-100 text-green-700 border-green-300' :
+                                    trip.stage === 'Trip Cancelled' ? 'bg-red-100 text-red-700 border-red-300' :
+                                    trip.stage === 'Enroute' ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                                    'bg-orange-100 text-orange-700 border-orange-300'
+                                  }`}
+                                >
+                                  {trip.stage}
+                                </Badge>
+                                <span className="font-semibold text-sm">#{trip.tripNumber}</span>
+                                {trip.locked && <Lock className="h-3 w-3 text-orange-500" />}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                📦 {trip.materialType} • {trip.quantity} {trip.quantityUnit?.toLowerCase()}
+                              </div>
+                            </div>
+
+                            {/* Route */}
+                            <div className="flex items-center gap-2">
+                              <div className="text-center">
+                                <div className="text-xs text-muted-foreground">FROM</div>
+                                <div className="font-medium text-sm">{trip.pickup?.city}</div>
+                              </div>
+                              <Navigation className="h-4 w-4 text-muted-foreground mx-2" />
+                              <div className="text-center">
+                                <div className="text-xs text-muted-foreground">TO</div>
+                                <div className="font-medium text-sm">{trip.delivery?.city}</div>
+                              </div>
+                            </div>
+
+                          </div>
+
+                          {/* Middle Section - Financial */}
+                          <div className="flex gap-6">
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground">TOTAL COST</div>
+                              <div className="font-semibold text-sm">₹{(trip.totalCost / 1000).toFixed(0)}K</div>
+                            </div>
+                          </div>
+
+                          {/* Right Section - Actions */}
+                          <div className="flex items-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleTripExpansion(trip.id)}
+                              className="p-1 h-8 w-8"
+                            >
+                              {expandedTrips.has(trip.id) ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Expanded Details Section */}
+                        {expandedTrips.has(trip.id) && (
+                            <div className="mt-6 pt-4 border-t bg-gray-50 rounded-lg p-4">
+                              <div className="grid md:grid-cols-2 gap-6">
+                                {/* Timeline Details */}
+                                <div>
+                                  <h5 className="font-semibold mb-3 flex items-center gap-2">
+                                    <Timer className="h-4 w-4" />
+                                    Trip Timeline
+                                  </h5>
+                                  <div className="space-y-3">
+                                    {trip.tripStages.map((stage, index) => (
+                                      <div key={index} className="flex items-center gap-3">
+                                        <div className={`w-4 h-4 rounded-full flex-shrink-0 ${
+                                          stage.isCompleted ? 'bg-green-500' :
+                                          index === trip.currentStageIndex ? 'bg-blue-500' :
+                                          'bg-gray-300'
+                                        }`} />
+                                        <div className="flex-1">
+                                          <div className={`text-sm font-medium ${
+                                            stage.isCompleted ? 'text-green-700' :
+                                            index === trip.currentStageIndex ? 'text-blue-700' :
+                                            'text-gray-500'
+                                          }`}>
+                                            {stage.stage}
+                                          </div>
+                                          {stage.startTime && (
+                                            <div className="text-xs text-muted-foreground">
+                                              {stage.startTime.toLocaleDateString()} {stage.startTime.toLocaleTimeString()}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Additional Details */}
+                                <div>
+                                  <h5 className="font-semibold mb-3 flex items-center gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    Additional Information
+                                  </h5>
+                                  <div className="space-y-3">
+                                    {/* Vehicle Information */}
+                                    <div className="p-3 bg-white rounded border">
+                                      <div className="text-sm font-medium mb-2">🚛 Vehicle Details</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex justify-between">
+                                          <span>Vehicle Number:</span>
+                                          <span className="font-medium">{trip.vehicleNumber}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Provider:</span>
+                                          <span>{trip.vehicleProvider}</span>
+                                        </div>
+                                        {trip.crew.length > 0 && (
+                                          <>
+                                            <div className="border-t pt-1 mt-1">
+                                              <span className="text-xs font-medium">Crew:</span>
+                                            </div>
+                                            {trip.crew.map((member, index) => (
+                                              <div key={index} className="flex justify-between">
+                                                <span>{member.position}:</span>
+                                                <span className="font-medium">{member.name}</span>
+                                              </div>
+                                            ))}
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+
+
+
+                                    {/* Trip Settings */}
+                                    <div className="p-3 bg-white rounded border">
+                                      <div className="text-sm font-medium mb-2">⚙️ Settings</div>
+                                      <div className="space-y-1 text-xs">
+                                        <div className="flex justify-between">
+                                          <span>Travel Mode:</span>
+                                          <span>{trip.travelMode}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Do Not Disturb:</span>
+                                          <span>{trip.doNotDisturb ? 'Yes' : 'No'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Locked:</span>
+                                          <span>{trip.locked ? 'Yes' : 'No'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Part Load:</span>
+                                          <span>{trip.partLoad ? 'Yes' : 'No'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Shareable Vehicle:</span>
+                                          <span>{trip.okToShareVehicle ? 'Yes' : 'No'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Third Party Expenses */}
+                                    {trip.thirdPartyExpenses && trip.thirdPartyExpenses.charges > 0 && (
+                                      <div className="p-3 bg-white rounded border">
+                                        <div className="text-sm font-medium mb-2">💰 Third Party Expenses</div>
+                                        <div className="text-xs">
+                                          <div className="flex justify-between">
+                                            <span>{trip.thirdPartyExpenses.name || 'Miscellaneous'}:</span>
+                                            <span>₹{trip.thirdPartyExpenses.charges.toLocaleString()}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalApiPages > 1 && (
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Page {apiCurrentPage} of {totalApiPages}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newFilters = { ...apiTripFilters, page: apiCurrentPage - 1 };
+                          setApiTripFilters(newFilters);
+                          refetchApiTrips(newFilters);
+                        }}
+                        disabled={apiCurrentPage === 1 || apiTripsLoading}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newFilters = { ...apiTripFilters, page: apiCurrentPage + 1 };
+                          setApiTripFilters(newFilters);
+                          refetchApiTrips(newFilters);
+                        }}
+                        disabled={apiCurrentPage === totalApiPages || apiTripsLoading}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {false && (
+        <TabsContent value="available" className="space-y-4">
+          {/* Available Trips Header */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Available Trips</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              Filters
-              {getActiveFilterCount() > 0 && (
-                <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
-                  {getActiveFilterCount()}
-                </Badge>
-              )}
-            </Button>
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4 text-success" />
+              <span className="text-sm text-muted-foreground">
+                {`${filteredTrips.length} of ${availableStatusTrips.length} available trips`}
+              </span>
+            </div>
           </div>
           {/* Select All Controls */}
           <Card className="p-4 bg-muted/20">
@@ -2687,6 +3252,7 @@ const Trips = () => {
             )}
           </div>
         </TabsContent>
+        )}
 
         <TabsContent value="my-investments" className="space-y-4">
           {/* My Investments Header */}
