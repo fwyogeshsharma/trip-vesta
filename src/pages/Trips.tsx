@@ -2442,77 +2442,91 @@ const Trips = () => {
                       {/* Insured Badge */}
                       <Badge
                         variant="outline"
-                        className="absolute top-2 right-2 bg-green-100 text-green-700 border-green-300 text-xs"
+                        className="absolute top-2 right-2 bg-green-100 text-green-700 border-green-300 text-xs z-10"
                       >
                         🛡️ Insured
                       </Badge>
 
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between py-1">
                           {/* Left Section - Trip Info */}
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-6">
                             {/* Selection Checkbox */}
                             <Checkbox
                               checked={selectedLiveTrips.has(trip.id)}
                               onCheckedChange={(checked) => handleLiveTripSelection(trip.id, checked as boolean)}
-                              className="border-blue-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                              className="border-blue-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 flex-shrink-0"
                             />
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-2 mb-1">
-                                <CompanyLogo
-                                  fileId={trip.rawData?.parcels?.[0]?.sender?.sender_company?.logo}
-                                  companyName={trip.sender?.company || trip.name || 'Unknown Company'}
-                                  size="sm"
-                                />
-                                <span className="font-semibold text-sm">{trip.sender?.company || trip.name || 'Unknown Company'}</span>
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs bg-blue-100 text-blue-700 border-blue-300"
-                                >
-                                  #{trip.tripNumber}
-                                </Badge>
-                                {trip.locked && <Lock className="h-3 w-3 text-orange-500" />}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                📦 {trip.materialType} • {trip.quantity} {trip.quantityUnit?.toLowerCase()}
-                              </div>
-                            </div>
 
-                            {/* Route */}
-                            <div className="flex items-center gap-2">
-                              <div className="text-center">
-                                <div className="text-xs text-muted-foreground">FROM</div>
-                                <div className="font-medium text-sm">{trip.pickup?.city}</div>
+                            {/* Company Info Section - Double Fixed Width */}
+                            <div className="flex items-center gap-3 w-160 flex-shrink-0">
+                              <CompanyLogo
+                                fileId={trip.rawData?.parcels?.[0]?.sender?.sender_company?.logo}
+                                companyName={trip.sender?.company || trip.name || 'Unknown Company'}
+                                size="lg"
+                                className="flex-shrink-0"
+                              />
+                              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="font-semibold text-sm text-gray-800 truncate cursor-help">
+                                          {trip.sender?.company || trip.name || 'Unknown Company'}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="max-w-xs">{trip.sender?.company || trip.name || 'Unknown Company'}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs bg-blue-100 text-blue-700 border-blue-300 flex-shrink-0"
+                                  >
+                                    #{trip.tripNumber}
+                                  </Badge>
+                                  {trip.locked && <Lock className="h-3 w-3 text-orange-500 flex-shrink-0" />}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  📦 {trip.materialType} • {trip.quantity} {trip.quantityUnit?.toLowerCase()}
+                                </div>
                               </div>
-                              <Navigation className="h-4 w-4 text-muted-foreground mx-2" />
-                              <div className="text-center">
-                                <div className="text-xs text-muted-foreground">TO</div>
-                                <div className="font-medium text-sm">{trip.delivery?.city}</div>
-                              </div>
-                            </div>
-
-                          </div>
-
-                          {/* Middle Section - Financial */}
-                          <div className="flex gap-6">
-                            <div className="text-right">
-                              <div className="text-xs text-muted-foreground">TOTAL COST</div>
-                              <div className="font-semibold text-sm">₹{(trip.totalCost / 1000).toFixed(0)}K</div>
                             </div>
                           </div>
 
-                          {/* Right Section - Actions */}
-                          <div className="flex items-center">
+                          {/* Right Section - Route, Cost & Actions */}
+                          <div className="flex items-center gap-6 mr-16">
+                            {/* Route Section */}
+                            <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg border">
+                              <div className="text-center">
+                                <div className="text-xs text-muted-foreground font-medium">FROM</div>
+                                <div className="font-semibold text-sm text-gray-800">{trip.pickup?.city}</div>
+                              </div>
+                              <Navigation className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                              <div className="text-center">
+                                <div className="text-xs text-muted-foreground font-medium">TO</div>
+                                <div className="font-semibold text-sm text-gray-800">{trip.delivery?.city}</div>
+                              </div>
+                            </div>
+
+                            {/* Cost Section */}
+                            <div className="flex flex-col items-center justify-center text-center px-4 py-2 bg-green-50 rounded-lg border border-green-200 min-w-[100px] h-[52px]">
+                              <div className="text-xs text-green-600 font-medium">TOTAL COST</div>
+                              <div className="font-bold text-lg text-green-700">₹{(trip.totalCost / 1000).toFixed(0)}K</div>
+                            </div>
+
+                            {/* Expand Button */}
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => toggleTripExpansion(trip.id)}
-                              className="p-1 h-8 w-8"
+                              className="p-2 h-10 w-10 hover:bg-gray-100 flex-shrink-0"
                             >
                               {expandedTrips.has(trip.id) ? (
-                                <ChevronUp className="h-4 w-4" />
+                                <ChevronUp className="h-5 w-5 text-gray-600" />
                               ) : (
-                                <ChevronDown className="h-4 w-4" />
+                                <ChevronDown className="h-5 w-5 text-gray-600" />
                               )}
                             </Button>
                           </div>
@@ -2887,19 +2901,13 @@ const Trips = () => {
                             disabled={trip.status === "completed" || isLocked || isProcessing}
                             className="flex-shrink-0"
                           />
-                          {trip.companyLogo && (
-                            <div className="flex-shrink-0">
-                              <img
-                                src={trip.companyLogo}
-                                alt={`${trip.name} logo`}
-                                className="w-8 h-8 object-contain rounded border border-gray-200"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                }}
-                              />
-                            </div>
-                          )}
+                          <div className="flex-shrink-0">
+                            <CompanyLogo
+                              fileId={trip.rawData?.parcels?.[0]?.sender?.sender_company?.logo}
+                              companyName={trip.sender?.company || trip.name || 'Unknown Company'}
+                              size="sm"
+                            />
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0 flex-1">

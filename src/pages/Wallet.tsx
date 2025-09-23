@@ -22,9 +22,9 @@ import {
   Flag
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// Removed PaymentService import - directing users to production
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthToken } from "@/services/authService";
 
 // Razorpay integration removed - users directed to production for payments
 
@@ -41,7 +41,50 @@ const Wallet = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<number | null>(null);
   const [investmentPermission, setInvestmentPermission] = useState(true);
-  const [isProductionDialogOpen, setIsProductionDialogOpen] = useState(false);
+
+  // Payment request API configuration
+  const API_BASE_URL = 'https://35.244.19.78:8042';
+
+  // Create payment request function similar to Angular implementation
+  const createPaymentRequest = async (paymentData: {
+    amount: number;
+    mode_of_payment: string;
+    order_note: string;
+    product_or_service?: string;
+    paying_user?: string;
+    receiving_user?: string;
+    paying_company?: string;
+    delivery_address?: string;
+    gps_device?: string;
+    state_id?: string;
+    discount_offered?: number;
+  }) => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/payment_request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(paymentData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Payment request failed:', error);
+      throw error;
+    }
+  };
 
   // Add account form
   const [newAccountData, setNewAccountData] = useState({
@@ -139,9 +182,65 @@ const Wallet = () => {
       return;
     }
 
-    // Show production redirect dialog
-    setIsProductionDialogOpen(true);
-    setAddAmount("");
+    // Check if user is logged in
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to add funds to your wallet",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    try {
+      // Create payment request similar to Angular implementation
+      const paymentRequestData = {
+        amount: amountToAdd,
+        mode_of_payment: "Online",
+        order_note: "Rolling Radius Services",
+        product_or_service: "61422c0a1778a2a004068c63", // Required field for wallet top-up
+        paying_user: user.id || user._id,
+        receiving_user: "6257f1d75b42235a2ae4ab34",
+        discount_offered: 0
+      };
+
+      console.log("Creating payment request:", paymentRequestData);
+
+      const result = await createPaymentRequest(paymentRequestData);
+
+      console.log("Payment request result:", result);
+
+      // Check if payment link is available and redirect
+      if (result?.data?.payment_link) {
+        toast({
+          title: "Redirecting to Payment",
+          description: "You will be redirected to complete the payment",
+        });
+
+        // Redirect to payment gateway
+        window.location.href = result.data.payment_link;
+      } else {
+        // If no payment link, show success message (for development/testing)
+        toast({
+          title: "Payment Request Created",
+          description: `Payment request for ₹${amountToAdd.toLocaleString()} has been created successfully`,
+        });
+
+        setAddAmount("");
+      }
+    } catch (error: any) {
+      console.error("Payment request failed:", error);
+
+      toast({
+        title: "Payment Request Failed",
+        description: error.message || "Failed to create payment request. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   // Removed payment success handler - users directed to production
@@ -626,46 +725,6 @@ const Wallet = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Production Redirect Dialog */}
-      <Dialog open={isProductionDialogOpen} onOpenChange={setIsProductionDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              🚧 Demo Site - Payment Not Available
-            </DialogTitle>
-            <DialogDescription>
-              This is a demonstration version of the investment portal.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <h3 className="font-semibold text-yellow-800 mb-2">
-                Ready to Make Real Investments?
-              </h3>
-              <p className="text-yellow-700 text-sm mb-3">
-                To add funds to your wallet and start investing, please visit our production site where secure payment processing is available.
-              </p>
-              <div className="flex items-center gap-2 text-sm text-yellow-600">
-                <Shield className="h-4 w-4" />
-                <span>Secure payments powered by industry-standard encryption</span>
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-3">
-                Continue exploring the demo or switch to production for real transactions.
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-center">
-            <Button
-              onClick={() => setIsProductionDialogOpen(false)}
-              className="w-full"
-            >
-              Continue Demo
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
