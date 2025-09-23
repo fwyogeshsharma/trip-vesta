@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TripMilestones } from "@/components/TripMilestones";
+import CompanyLogo from "@/components/CompanyLogo";
 import {
   MapPin,
   Calendar,
@@ -2379,7 +2380,7 @@ const Trips = () => {
                                 <tr className="border-b border-blue-200">
                                   <th className="text-left py-2 px-3 font-medium text-blue-900">Trip #</th>
                                   <th className="text-left py-2 px-3 font-medium text-blue-900">Route</th>
-                                  <th className="text-left py-2 px-3 font-medium text-blue-900">Stage</th>
+                                  <th className="text-left py-2 px-3 font-medium text-blue-900">Company</th>
                                   <th className="text-left py-2 px-3 font-medium text-blue-900">Vehicle</th>
                                   <th className="text-right py-2 px-3 font-medium text-blue-900">Cost</th>
                                 </tr>
@@ -2392,9 +2393,17 @@ const Trips = () => {
                                       {trip.pickup?.city} → {trip.delivery?.city}
                                     </td>
                                     <td className="py-2 px-3">
-                                      <Badge variant="outline" className="text-xs bg-white border-blue-300 text-blue-700">
-                                        {trip.stage}
-                                      </Badge>
+                                      <div className="flex items-center gap-2">
+                                        <CompanyLogo
+                                          fileId={trip.rawData?.parcels?.[0]?.sender?.sender_company?.logo}
+                                          companyName={trip.sender?.company || trip.name || 'Unknown Company'}
+                                          size="sm"
+                                        />
+                                        <span className="text-blue-800 font-medium">{trip.sender?.company || trip.name || 'Unknown Company'}</span>
+                                        <Badge variant="outline" className="text-xs bg-white border-blue-300 text-blue-700">
+                                          #{trip.tripNumber}
+                                        </Badge>
+                                      </div>
                                     </td>
                                     <td className="py-2 px-3 text-blue-800">{trip.vehicleNumber}</td>
                                     <td className="py-2 px-3 text-right font-medium text-blue-800">
@@ -2450,18 +2459,18 @@ const Trips = () => {
                             />
                             <div className="flex flex-col">
                               <div className="flex items-center gap-2 mb-1">
+                                <CompanyLogo
+                                  fileId={trip.rawData?.parcels?.[0]?.sender?.sender_company?.logo}
+                                  companyName={trip.sender?.company || trip.name || 'Unknown Company'}
+                                  size="sm"
+                                />
+                                <span className="font-semibold text-sm">{trip.sender?.company || trip.name || 'Unknown Company'}</span>
                                 <Badge
                                   variant="outline"
-                                  className={`text-xs ${
-                                    trip.stage === 'Trip Completed' ? 'bg-green-100 text-green-700 border-green-300' :
-                                    trip.stage === 'Trip Cancelled' ? 'bg-red-100 text-red-700 border-red-300' :
-                                    trip.stage === 'Enroute' ? 'bg-blue-100 text-blue-700 border-blue-300' :
-                                    'bg-orange-100 text-orange-700 border-orange-300'
-                                  }`}
+                                  className="text-xs bg-blue-100 text-blue-700 border-blue-300"
                                 >
-                                  {trip.stage}
+                                  #{trip.tripNumber}
                                 </Badge>
-                                <span className="font-semibold text-sm">#{trip.tripNumber}</span>
                                 {trip.locked && <Lock className="h-3 w-3 text-orange-500" />}
                               </div>
                               <div className="text-xs text-muted-foreground">
@@ -2486,7 +2495,7 @@ const Trips = () => {
 
                           {/* Middle Section - Financial */}
                           <div className="flex gap-6">
-                            <div className="text-center">
+                            <div className="text-right">
                               <div className="text-xs text-muted-foreground">TOTAL COST</div>
                               <div className="font-semibold text-sm">₹{(trip.totalCost / 1000).toFixed(0)}K</div>
                             </div>
@@ -2893,7 +2902,12 @@ const Trips = () => {
                           )}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <h3 className="font-semibold text-sm truncate">{trip.name}</h3>
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <h3 className="font-semibold text-sm truncate">{trip.name}</h3>
+                                <Badge variant="secondary" className="text-xs px-1.5 py-0.5 flex-shrink-0">
+                                  {trip.tripId ? trip.tripId.slice(-6) : trip.id.slice(-6)}
+                                </Badge>
+                              </div>
                               <div className="flex items-center gap-1">
                                 <TooltipProvider>
                                   <Tooltip>
@@ -3008,6 +3022,9 @@ const Trips = () => {
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                             <CardTitle className="text-sm font-semibold truncate">{trip.name}</CardTitle>
+                            <Badge variant="secondary" className="text-xs px-1.5 py-0.5 flex-shrink-0">
+                              {trip.tripId ? trip.tripId.slice(-6) : trip.id.slice(-6)}
+                            </Badge>
                             {trip.category && (
                               <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                                 {trip.category}

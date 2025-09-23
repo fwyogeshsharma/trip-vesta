@@ -55,6 +55,7 @@ export interface TripParcel {
       _id: string;
       name: string;
       phone: string | null;
+      logo?: string;
     };
   };
   verification: string;
@@ -211,6 +212,95 @@ export const getTripStatuses = (): string[] => {
 };
 
 /**
+ * Get file from the API by file ID
+ */
+export const getFileFromId = async (fileId: string): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const queryParams = new URLSearchParams();
+    queryParams.append('where', `{"_id":"${fileId}"}`);
+
+    const response = await fetch(`${API_BASE_URL}/files?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching file:', error);
+    throw new Error('Failed to fetch file. Please try again.');
+  }
+};
+
+/**
+ * Get image bytes from file ID for displaying logos
+ */
+export const getImageBytesFromFileId = async (fileId: string | null): Promise<string | null> => {
+  if (!fileId) return null;
+
+  try {
+    const response = await getFileFromId(fileId);
+    if (!response) return null;
+
+    const fileItem = response['_items']?.[0]?.['file'];
+
+    if (fileItem?.['file'] && fileItem?.['content_type'] !== 'application/pdf') {
+      // Return base64 data URL for React images
+      return `data:${fileItem['content_type']};base64,${fileItem['file']}`;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting image bytes from file ID:', error);
+    return null;
+  }
+};
+
+/**
+ * Get company record by company ID
+ */
+export const getCompanyRecord = async (companyId: string): Promise<any> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const queryParams = new URLSearchParams();
+    queryParams.append('company_id', companyId);
+
+    const response = await fetch(`${API_BASE_URL}/get_company_record?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching company record:', error);
+    throw new Error('Failed to fetch company record. Please try again.');
+  }
+};
+
+/**
  * Format trip data for display
  */
 export const formatTripForDisplay = (trip: TripData) => {
@@ -332,6 +422,10 @@ export const formatTripForDisplay = (trip: TripData) => {
 
     // Verification status
     verificationStatus: mainParcel?.verification || 'Pending',
+
+    // Use company name as trip name and trip_id as identifier
+    name: mainParcel?.sender?.sender_company?.name || 'Unknown Company',
+    tripId: trip._id,
 
     // Original data for detailed view
     rawData: trip
