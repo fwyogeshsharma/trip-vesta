@@ -207,11 +207,11 @@ const Trips = () => {
     return selectedLiveTrips.size > 0 && selectedLiveTrips.size < filteredApiTrips.length;
   };
 
-  // Calculate total cost of selected trips
+  // Calculate total freight charges of selected trips
   const getTotalSelectedCost = () => {
     return filteredApiTrips
       .filter(trip => selectedLiveTrips.has(trip.id))
-      .reduce((total, trip) => total + (trip.totalCost || 0), 0);
+      .reduce((total, trip) => total + (trip.total_freight_Charges || 0), 0);
   };
 
   const getSelectedTripsData = () => {
@@ -394,7 +394,7 @@ const Trips = () => {
     return {
       id: investmentId,
       tripName: trip.name,
-      amount: trip.targetAmount,
+      amount: trip.freightCharges,
       investedDate: today,
       tripStartDate: trip.startDate || today,
       expectedEndDate: endDate,
@@ -594,7 +594,7 @@ const Trips = () => {
 
       for (const tripId of selectedTrips) {
         const trip = availableStatusTrips.find(t => t.id === tripId);
-        const effectiveAmount = trip?.targetAmount || 0; // Invest full trip amount
+        const effectiveAmount = trip?.freightCharges || 0; // Invest full trip freight charges
 
         // Verify trip is still available
         if (!TripLockService.isTripAvailable(tripId, currentUserId)) {
@@ -689,7 +689,7 @@ const Trips = () => {
   const getTotalInvestment = () => {
     return Array.from(selectedTrips).reduce((sum, tripId) => {
       const trip = availableStatusTrips.find(t => t.id === tripId);
-      const effectiveAmount = trip?.targetAmount || 0; // Full trip amount
+      const effectiveAmount = trip?.freightCharges || 0; // Full trip freight charges
       return sum + effectiveAmount;
     }, 0);
   };
@@ -2573,7 +2573,7 @@ const Trips = () => {
                               {/* Cost Section */}
                               <div className="flex flex-col items-center justify-center text-center px-4 py-2 bg-green-50 rounded-lg border border-green-200 min-w-[100px] h-[52px]">
                                 <div className="text-xs text-green-600 font-medium">TOTAL COST</div>
-                                <div className="font-bold text-lg text-green-700">₹{(trip.totalCost / 1000).toFixed(0)}K</div>
+                                <div className="font-bold text-lg text-green-700">₹{(trip.freightCharges / 1000).toFixed(0)}K</div>
                               </div>
 
                               {/* Expand Button */}
@@ -3003,7 +3003,7 @@ const Trips = () => {
                               <span className="truncate">{trip.location}</span>
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
-                              Target: ₹{(trip.targetAmount / 1000).toFixed(0)}K
+                              Freight: ₹{(trip.freightCharges / 1000).toFixed(0)}K
                             </div>
                             {/* Investment Amount Input - REMOVED */}
                             {/*
@@ -3220,7 +3220,7 @@ const Trips = () => {
                   {/* Progress Section */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium">Progress: {getProgress(trip.currentAmount, trip.targetAmount)}%</span>
+                      <span className="font-medium">Progress: {getProgress(trip.currentAmount, trip.freightCharges)}%</span>
                       {trip.endDate && getRemainingDays(trip.endDate) <= 180 && (
                         <span className="text-muted-foreground">
                           {getRemainingDays(trip.endDate)} days left
@@ -3228,7 +3228,7 @@ const Trips = () => {
                       )}
                     </div>
                     <Progress
-                      value={getProgress(trip.currentAmount, trip.targetAmount)}
+                      value={getProgress(trip.currentAmount, trip.freightCharges)}
                       className="h-1.5"
                     />
                   </div>
@@ -3236,12 +3236,12 @@ const Trips = () => {
                   {/* Trip Details - Single Row */}
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t text-xs">
                     <div>
-                      <span className="text-muted-foreground">Trip Amount</span>
-                      <p className="font-medium">₹{(trip.targetAmount / 1000).toFixed(0)}K</p>
+                      <span className="text-muted-foreground">Freight Charges</span>
+                      <p className="font-medium">₹{(trip.freightCharges / 1000).toFixed(0)}K</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Progress</span>
-                      <p className="font-medium">{getProgress(trip.currentAmount, trip.targetAmount)}%</p>
+                      <p className="font-medium">{getProgress(trip.currentAmount, trip.freightCharges)}%</p>
                     </div>
                   </div>
                 </CardContent>

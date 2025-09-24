@@ -88,10 +88,20 @@ const Wallet = () => {
 
   // Add account form
   const [newAccountData, setNewAccountData] = useState({
+    accountHolderName: "",
     bank: "",
     accountNumber: "",
+    confirmAccountNumber: "",
+    ifscCode: "",
+    bankIdentity: "",
     type: "Checking"
   });
+
+  // File upload states
+  const [accountIdentityFile, setAccountIdentityFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
 
   // Edit account form
   const [editAccountData, setEditAccountData] = useState({
@@ -142,6 +152,87 @@ const Wallet = () => {
       active: false
     }
   ]);
+
+  // Fetch existing bank accounts from API
+  const fetchBankAccounts = async () => {
+    if (!user) return;
+
+    setIsLoadingAccounts(true);
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const companyId = user?.company_id || "62d66794e54f47829a886a1d";
+      const whereClause = encodeURIComponent(JSON.stringify({ "created_by_company": companyId }));
+      const sortClause = encodeURIComponent(JSON.stringify([["_created", -1]]));
+
+      const url = `${API_BASE_URL}/banking_details?where=${whereClause}&max_results=100&sort=${sortClause}`;
+
+      console.log("Fetching bank accounts from:", url);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch bank accounts: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Bank accounts fetched:", result);
+
+      // Transform API data to match our UI format
+      const transformedAccounts = result._items?.map((account: any, index: number) => ({
+        id: account._id || index + 1,
+        accountHolderName: account.beneficiary_name,
+        bank: account.bank_name,
+        accountNumber: `****${account.account_number?.slice(-4) || "****"}`,
+        fullAccountNumber: account.account_number, // Store full number for editing
+        ifscCode: account.ifsc_code,
+        bankIdentity: account.banking_detail_type,
+        accountIdentityId: account.account_identity,
+        type: account.account_type || "Savings", // Default if not specified
+        verified: account.is_verified || false,
+        active: account.is_active || false,
+        apiId: account._id,
+        createdDate: account._created
+      })) || [];
+
+      setBankAccounts(transformedAccounts);
+
+      // If no accounts are active and we have accounts, set the first one as active
+      if (transformedAccounts.length > 0 && !transformedAccounts.some((acc: any) => acc.active)) {
+        const updatedAccounts = transformedAccounts.map((acc: any, index: number) => ({
+          ...acc,
+          active: index === 0
+        }));
+        setBankAccounts(updatedAccounts);
+      }
+
+    } catch (error: any) {
+      console.error("Failed to fetch bank accounts:", error);
+      toast({
+        title: "Failed to Load Accounts",
+        description: error.message || "Could not load your bank accounts. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingAccounts(false);
+    }
+  };
+
+  // Load bank accounts when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      fetchBankAccounts();
+    }
+  }, [user]);
 
   // Removed Razorpay script loading - directing users to production
 
@@ -274,33 +365,202 @@ const Wallet = () => {
     }
   };
 
-  const handleAddAccount = () => {
-    if (!newAccountData.bank || !newAccountData.accountNumber) {
+  // Upload file and get account identity ID
+  const uploadAccountIdentityFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      console.log("Uploading file to /files endpoint:", file.name, file.type, file.size);
+
+      // Upload file to /files endpoint
+      const response = await fetch(`${API_BASE_URL}/files`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("File upload failed:", response.status, errorText);
+        throw new Error(`File upload failed: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log("File upload successful:", result);
+
+      // Return the file ID from the response
+      return result._id || result.id || result.file_id;
+    } catch (error) {
+      console.error('File upload failed:', error);
+      throw error;
+    }
+  };
+
+  // Submit banking details to API
+  const submitBankingDetails = async (accountIdentityId: string) => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const bankingDetailsPayload = {
+        beneficiary_name: newAccountData.accountHolderName,
+        account_number: newAccountData.accountNumber,
+        ifsc_code: newAccountData.ifscCode.toUpperCase(),
+        bank_name: newAccountData.bank,
+        banking_detail_type: "Bank",
+        account_identity: accountIdentityId,
+        created_by_company: user?.company_id || "62d66794e54f47829a886a1d" // Use user's company or default
+      };
+
+      console.log("Submitting banking details:", bankingDetailsPayload);
+
+      const response = await fetch(`${API_BASE_URL}/banking_details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bankingDetailsPayload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Banking details submission failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Banking details submitted successfully:", result);
+      return result;
+    } catch (error) {
+      console.error('Banking details submission failed:', error);
+      throw error;
+    }
+  };
+
+  const handleAddAccount = async () => {
+    // Validate all required fields
+    if (!newAccountData.accountHolderName || !newAccountData.bank || !newAccountData.accountNumber ||
+        !newAccountData.confirmAccountNumber || !newAccountData.ifscCode || !accountIdentityFile) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields and upload account identity image",
         variant: "destructive"
       });
       return;
     }
 
-    const newAccount = {
-      id: bankAccounts.length + 1,
-      bank: newAccountData.bank,
-      accountNumber: `****${newAccountData.accountNumber.slice(-4)}`,
-      type: newAccountData.type,
-      verified: false,
-      active: false
-    };
+    // Validate that uploaded file is an image
+    if (accountIdentityFile && !accountIdentityFile.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload an image file (JPG, PNG, GIF, WebP) for account identity",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    setBankAccounts(prev => [...prev, newAccount]);
-    setNewAccountData({ bank: "", accountNumber: "", type: "Checking" });
-    setIsAddDialogOpen(false);
+    // Validate image file size (max 10MB)
+    if (accountIdentityFile && accountIdentityFile.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Image size must be less than 10MB",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    toast({
-      title: "Bank Account Added",
-      description: `${newAccount.bank} account has been added successfully`,
-    });
+    // Validate account number confirmation
+    if (newAccountData.accountNumber !== newAccountData.confirmAccountNumber) {
+      toast({
+        title: "Account Number Mismatch",
+        description: "Account number and confirm account number must match",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate IFSC code format (basic validation)
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscRegex.test(newAccountData.ifscCode.toUpperCase())) {
+      toast({
+        title: "Invalid IFSC Code",
+        description: "Please enter a valid IFSC code (e.g., SBIN0123456)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if user is logged in
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please login to add bank account",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAddingAccount(true);
+
+    try {
+      // Step 1: Upload account identity image file
+      toast({
+        title: "Uploading Image",
+        description: "Uploading account identity image to database...",
+      });
+
+      const accountIdentityId = await uploadAccountIdentityFile(accountIdentityFile);
+
+      // Step 2: Submit banking details
+      toast({
+        title: "Submitting Details",
+        description: "Submitting banking details...",
+      });
+
+      const apiResult = await submitBankingDetails(accountIdentityId);
+
+      // Step 3: Refresh bank accounts from API to get the latest data
+      await fetchBankAccounts();
+
+      // Reset form
+      setNewAccountData({
+        accountHolderName: "",
+        bank: "",
+        accountNumber: "",
+        confirmAccountNumber: "",
+        ifscCode: "",
+        bankIdentity: "",
+        type: "Checking"
+      });
+      setAccountIdentityFile(null);
+      setImagePreview(null);
+      setIsAddDialogOpen(false);
+
+      toast({
+        title: "Bank Account Added Successfully",
+        description: `${newAccountData.bank} account for ${newAccountData.accountHolderName} has been added and submitted for verification`,
+      });
+
+    } catch (error: any) {
+      console.error("Add account failed:", error);
+
+      toast({
+        title: "Failed to Add Account",
+        description: error.message || "Failed to add bank account. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAddingAccount(false);
+    }
   };
 
   const handleEditAccount = () => {
@@ -526,67 +786,94 @@ const Wallet = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {bankAccounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className={`flex items-center justify-between p-4 border rounded-lg transition-all ${
-                      account.active ? 'border-primary bg-primary/5 shadow-sm' : 'hover:bg-muted/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <CreditCard className={`h-8 w-8 ${
-                        account.active ? 'text-primary' : 'text-muted-foreground'
-                      }`} />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{account.bank}</h3>
-                          {account.active && (
-                            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
-                              Active
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {account.type} • {account.accountNumber}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {account.verified ? (
-                        <Badge className="bg-success text-success-foreground">Verified</Badge>
-                      ) : (
-                        <Badge variant="secondary">Pending</Badge>
-                      )}
-                      {!account.active && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSetActiveAccount(account.id)}
-                        >
-                          Set Active
-                        </Button>
-                      )}
+              {isLoadingAccounts ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span className="text-muted-foreground">Loading bank accounts...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {bankAccounts.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Building className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-muted-foreground mb-2">No Bank Accounts</h3>
+                      <p className="text-sm text-muted-foreground mb-4">You haven't added any bank accounts yet.</p>
                       <Button
                         variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenEditDialog(account.id)}
+                        onClick={() => setIsAddDialogOpen(true)}
                       >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Your First Account
                       </Button>
                     </div>
-                  </div>
-                ))}
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setIsAddDialogOpen(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Bank Account
-                </Button>
-              </div>
+                  ) : (
+                    <>
+                      {bankAccounts.map((account) => (
+                        <div
+                          key={account.id}
+                          className={`flex items-center justify-between p-4 border rounded-lg transition-all ${
+                            account.active ? 'border-primary bg-primary/5 shadow-sm' : 'hover:bg-muted/30'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <CreditCard className={`h-8 w-8 ${
+                              account.active ? 'text-primary' : 'text-muted-foreground'
+                            }`} />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">{account.bank}</h3>
+                                {account.active && (
+                                  <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                                    Active
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {account.type} • {account.accountNumber}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {account.accountHolderName} • IFSC: {account.ifscCode}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {account.verified ? (
+                              <Badge className="bg-success text-success-foreground">Verified</Badge>
+                            ) : (
+                              <Badge variant="secondary">Pending</Badge>
+                            )}
+                            {!account.active && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSetActiveAccount(account.id)}
+                              >
+                                Set Active
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenEditDialog(account.id)}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setIsAddDialogOpen(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Bank Account
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -594,16 +881,67 @@ const Wallet = () => {
 
       {/* Add Bank Account Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Bank Account</DialogTitle>
             <DialogDescription>
-              Add a new bank account for deposits and withdrawals.
+              Add a new bank account for deposits and withdrawals. All fields marked with * are required.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="add-bank-name">Bank Name</Label>
+              <Label htmlFor="add-account-holder-name">Account Holder Name *</Label>
+              <Input
+                id="add-account-holder-name"
+                placeholder="Enter full name as per bank records"
+                value={newAccountData.accountHolderName}
+                onChange={(e) =>
+                  setNewAccountData(prev => ({ ...prev, accountHolderName: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-account-number">Account Number *</Label>
+              <Input
+                id="add-account-number"
+                placeholder="Enter full account number"
+                type="number"
+                value={newAccountData.accountNumber}
+                onChange={(e) =>
+                  setNewAccountData(prev => ({ ...prev, accountNumber: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-confirm-account-number">Confirm Account Number *</Label>
+              <Input
+                id="add-confirm-account-number"
+                placeholder="Re-enter account number"
+                type="number"
+                value={newAccountData.confirmAccountNumber}
+                onChange={(e) =>
+                  setNewAccountData(prev => ({ ...prev, confirmAccountNumber: e.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-ifsc-code">IFSC Code *</Label>
+              <Input
+                id="add-ifsc-code"
+                placeholder="Enter IFSC code (e.g., SBIN0123456)"
+                value={newAccountData.ifscCode}
+                onChange={(e) =>
+                  setNewAccountData(prev => ({ ...prev, ifscCode: e.target.value.toUpperCase() }))
+                }
+                style={{ textTransform: 'uppercase' }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-bank-name">Bank Name *</Label>
               <Input
                 id="add-bank-name"
                 placeholder="Enter bank name"
@@ -613,17 +951,90 @@ const Wallet = () => {
                 }
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="add-account-number">Account Number</Label>
+              <Label htmlFor="add-bank-identity">Bank Identity</Label>
               <Input
-                id="add-account-number"
-                placeholder="Enter full account number"
-                value={newAccountData.accountNumber}
+                id="add-bank-identity"
+                placeholder="Enter bank branch or identifier (optional)"
+                value={newAccountData.bankIdentity}
                 onChange={(e) =>
-                  setNewAccountData(prev => ({ ...prev, accountNumber: e.target.value }))
+                  setNewAccountData(prev => ({ ...prev, bankIdentity: e.target.value }))
                 }
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="add-account-identity">Upload Account Identity * (Image)</Label>
+              <Input
+                id="add-account-identity"
+                type="file"
+                accept=".jpg,.jpeg,.png,.gif,.bmp,.webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setAccountIdentityFile(file);
+
+                  // Create image preview
+                  if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      setImagePreview(e.target?.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                  } else {
+                    setImagePreview(null);
+                  }
+                }}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-muted-foreground">
+                Upload clear images of bank statement, passbook copy, or cancelled cheque (JPG, PNG, GIF, WebP formats)
+              </p>
+
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="mt-3 p-3 border rounded-lg bg-muted/20">
+                  <p className="text-sm font-medium mb-2">Preview:</p>
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Account identity preview"
+                      className="max-w-full h-auto max-h-48 rounded-md border"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2 h-8 w-8 p-0"
+                      onClick={() => {
+                        setAccountIdentityFile(null);
+                        setImagePreview(null);
+                        // Reset file input
+                        const fileInput = document.getElementById('add-account-identity') as HTMLInputElement;
+                        if (fileInput) fileInput.value = '';
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {accountIdentityFile && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      File: {accountIdentityFile.name} ({(accountIdentityFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* File validation message */}
+              {accountIdentityFile && !accountIdentityFile.type.startsWith('image/') && (
+                <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md">
+                  <p className="text-xs text-destructive">
+                    Please select an image file (JPG, PNG, GIF, WebP)
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="add-account-type">Account Type</Label>
               <Select
@@ -648,12 +1059,31 @@ const Wallet = () => {
               variant="outline"
               onClick={() => {
                 setIsAddDialogOpen(false);
-                setNewAccountData({ bank: "", accountNumber: "", type: "Checking" });
+                setNewAccountData({
+                  accountHolderName: "",
+                  bank: "",
+                  accountNumber: "",
+                  confirmAccountNumber: "",
+                  ifscCode: "",
+                  bankIdentity: "",
+                  type: "Checking"
+                });
+                setAccountIdentityFile(null);
+                setImagePreview(null);
               }}
             >
               Cancel
             </Button>
-            <Button onClick={handleAddAccount}>Add Account</Button>
+            <Button onClick={handleAddAccount} disabled={isAddingAccount}>
+              {isAddingAccount ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding Account...
+                </>
+              ) : (
+                "Add Account"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
