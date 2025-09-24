@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useSEO, pageSEO } from "@/hooks/useSEO";
+import { generateServiceSchema } from "@/utils/structuredData";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -62,6 +64,14 @@ declare global {
 // Static demo investments removed - now using only dynamic user investments
 
 const Trips = () => {
+  // SEO Implementation
+  useSEO({
+    ...pageSEO.trips,
+    structuredData: generateServiceSchema(),
+    ogUrl: typeof window !== 'undefined' ? window.location.href : 'https://tripvesta.com/trips',
+    canonical: 'https://tripvesta.com/trips'
+  });
+
   const { walletData, deductFromBalance } = useWallet();
 
   // Add custom styles for responsive trip cards

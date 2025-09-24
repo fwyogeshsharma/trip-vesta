@@ -1,6 +1,8 @@
 import { MetricCard } from "@/components/MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useSEO, pageSEO } from "@/hooks/useSEO";
+import { generateDashboardSchema } from "@/utils/structuredData";
 import {
   Users,
   MapPin,
@@ -453,6 +455,18 @@ const topInvestors = [
 ];
 
 const Dashboard = () => {
+  // SEO Implementation
+  useSEO({
+    ...pageSEO.dashboard,
+    structuredData: generateDashboardSchema({
+      totalLenders: "28",
+      activeTrips: "23",
+      totalProfit: "₹18,456,230"
+    }),
+    ogUrl: typeof window !== 'undefined' ? window.location.href : 'https://tripvesta.com/dashboard',
+    canonical: 'https://tripvesta.com/dashboard'
+  });
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -471,9 +485,9 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-6 bg-background text-foreground">
+    <main className="flex-1 space-y-6 p-6 bg-background text-foreground" role="main" aria-label="Trip Vesta Dashboard">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-6 text-white">
+      <header className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-6 text-white">
         <div className="relative z-10">
           <div className="flex items-center justify-between">
             <div>

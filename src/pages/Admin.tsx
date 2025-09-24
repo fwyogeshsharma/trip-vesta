@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useSEO, pageSEO } from "@/hooks/useSEO";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -432,6 +433,13 @@ const trips = [
 ];
 
 const Admin = () => {
+  // SEO Implementation - Admin pages should not be indexed
+  useSEO({
+    ...pageSEO.admin,
+    ogUrl: typeof window !== 'undefined' ? window.location.href : 'https://tripvesta.com/admin',
+    canonical: 'https://tripvesta.com/admin'
+  });
+
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingInterest, setEditingInterest] = useState<number | null>(null);

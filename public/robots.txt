@@ -1,14 +1,64 @@
+# Trip Vesta Robots.txt
+# https://tripvesta.com/robots.txt
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /settings/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /*?*
+Disallow: /search?*
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /private/
+
+# Allow important pages for SEO
+Allow: /trips
+Allow: /dashboard
+Allow: /wallet
+Allow: /
+
+# Crawl delay to be respectful
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://tripvesta.com/sitemap.xml
+
+# Block specific bots that might cause issues
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Allow Google and other major search engines
 User-agent: Googlebot
 Allow: /
+Disallow: /admin/
+Disallow: /settings/
+Disallow: /api/
+Disallow: /auth/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /admin/
+Disallow: /settings/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Slurp
+Allow: /
+Disallow: /admin/
+Disallow: /settings/
+Disallow: /api/
+Disallow: /auth/
 
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
-Allow: /
-
-User-agent: *
 Allow: /
