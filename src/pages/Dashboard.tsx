@@ -32,10 +32,10 @@ import {
   Pie
 } from "recharts";
 
-// Real data - 28 normal investors
+// Real data - 28 normal lenders
 const metrics = [
   {
-    title: "Total Investors",
+    title: "Total Lenders",
     value: "28",
     change: "+12% from last month",
     changeType: "positive" as const,
@@ -49,7 +49,7 @@ const metrics = [
     icon: MapPin,
   },
   {
-    title: "Total Investor Profit",
+    title: "Total Lender Profit",
     value: "₹18,456,230",
     change: "+20.1% from last month",
     changeType: "positive" as const,
@@ -484,7 +484,7 @@ const Dashboard = () => {
               <div className="flex items-center gap-6 mt-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  <span>28 Verified Investors</span>
+                  <span>28 Verified Lenders</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
@@ -717,7 +717,7 @@ const Dashboard = () => {
                       {getStatusBadge(trip.status)}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {trip.location} • {trip.investors} investors
+                      {trip.location} • {trip.investors} lenders
                     </p>
                     <div className="flex items-center gap-4 text-sm">
                       <span>Target: ₹{trip.targetAmount.toLocaleString()}</span>
@@ -742,7 +742,7 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5" />
-              Top Investors
+              Top Lenders
               <Badge variant="outline" className="ml-auto">
                 Verified
               </Badge>
@@ -795,14 +795,14 @@ const Dashboard = () => {
       {/* All Verified Investors */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold">Complete Investor Directory</h2>
+          <h2 className="text-xl font-semibold">Complete Lender Directory</h2>
           <div className="h-px bg-border flex-1" />
         </div>
         <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Our Verified Investor Community
+            Our Verified Lender Community
             <Badge variant="outline" className="ml-2">
               <Shield className="h-3 w-3 mr-1" />
               All Verified

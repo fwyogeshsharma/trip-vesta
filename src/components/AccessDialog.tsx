@@ -24,7 +24,7 @@ const AccessDialog = () => {
         <DialogHeader>
           <DialogTitle>Access Required</DialogTitle>
           <DialogDescription>
-            You need "Investor" or "IP Admin" role to access Trip Vesta Portal.
+            You need "Lender" or "IP Admin" role to access Trip Vesta Portal.
             Please contact support for access.
           </DialogDescription>
         </DialogHeader>

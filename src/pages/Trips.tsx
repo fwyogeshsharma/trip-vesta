@@ -487,7 +487,7 @@ const Trips = () => {
       if (!TripLockService.isTripAvailable(tripId, currentUserId)) {
         toast({
           title: "Trip Unavailable",
-          description: "This trip is currently being processed by another investor",
+          description: "This trip is currently being processed by another lender",
           variant: "destructive"
         });
         return;
@@ -3153,7 +3153,7 @@ const Trips = () => {
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1 whitespace-nowrap">
                               <Users className="h-3 w-3" />
-                              <span className="text-xs">Investors:</span>
+                              <span className="text-xs">Lenders:</span>
                               {trip.investorCount}
                             </span>
                             {trip.startDate && trip.endDate && (

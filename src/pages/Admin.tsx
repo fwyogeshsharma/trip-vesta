@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// Real investor data - 28 small company CEOs and founders
+// Real lender data - 28 small company CEOs and founders
 const investors = [
   {
     id: 1,
@@ -627,7 +627,7 @@ const Admin = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Investors</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Lenders</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -668,7 +668,7 @@ const Admin = () => {
 
       <Tabs defaultValue="investors" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="investors">Investors</TabsTrigger>
+          <TabsTrigger value="investors">Lenders</TabsTrigger>
           <TabsTrigger value="assignments">Trip Assignments</TabsTrigger>
           <TabsTrigger value="trips">Trips History</TabsTrigger>
           <TabsTrigger value="calculations">Percent Allocation</TabsTrigger>
@@ -679,13 +679,13 @@ const Admin = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Investor Management</CardTitle>
-                  <CardDescription>Manage investor accounts and interest rates</CardDescription>
+                  <CardTitle>Lender Management</CardTitle>
+                  <CardDescription>Manage lender accounts and interest rates</CardDescription>
                 </div>
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search investors..."
+                    placeholder="Search lenders..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-8 w-64"
@@ -817,7 +817,7 @@ const Admin = () => {
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {trip.investorCount} investors
+                            {trip.investorCount} lenders
                           </span>
                         </div>
                       </div>
@@ -938,7 +938,7 @@ const Admin = () => {
                                 <div className="bg-success/5 p-3 rounded-lg mt-2">
                                   <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div className="text-center p-2 bg-primary/10 rounded">
-                                      <div className="font-medium text-primary">Investor Profit</div>
+                                      <div className="font-medium text-primary">Lender Profit</div>
                                       <div className="text-lg font-bold">₹{investorProfit.toLocaleString()}</div>
                                       <div className="text-xs text-muted-foreground">60% of ₹{totalProfit.toLocaleString()}</div>
                                     </div>
@@ -983,7 +983,7 @@ const Admin = () => {
                                 <div className="bg-warning/5 p-3 rounded-lg mt-2">
                                   <div className="grid grid-cols-3 gap-3 text-sm">
                                     <div className="text-center p-2 bg-primary/10 rounded">
-                                      <div className="font-medium text-primary">Investor Profit</div>
+                                      <div className="font-medium text-primary">Lender Profit</div>
                                       <div className="text-lg font-bold">₹{investorProfit.toLocaleString()}</div>
                                       <div className="text-xs text-muted-foreground">60% of ₹{totalProfit.toLocaleString()}</div>
                                     </div>
@@ -1017,10 +1017,10 @@ const Admin = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5" />
-                Assign Trips to Investors
+                Assign Trips to Lenders
               </CardTitle>
               <CardDescription>
-                Manually assign investment opportunities to specific investors using their wallet funds
+                Manually assign investment opportunities to specific lenders using their wallet funds
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1029,10 +1029,10 @@ const Admin = () => {
                 <Card className="p-4 bg-muted/30">
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="investor-select">Select Investor</Label>
+                      <Label htmlFor="investor-select">Select Lender</Label>
                       <Select value={selectedInvestor} onValueChange={setSelectedInvestor}>
                         <SelectTrigger className="bg-background border z-50">
-                          <SelectValue placeholder="Choose an investor..." />
+                          <SelectValue placeholder="Choose a lender..." />
                         </SelectTrigger>
                         <SelectContent className="bg-background border z-50 shadow-lg">
                           {investors.map((investor) => (
@@ -1091,7 +1091,7 @@ const Admin = () => {
                         className="bg-background"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Amount will be deducted from investor's wallet balance
+                        Amount will be deducted from lender's wallet balance
                       </p>
                     </div>
                   </div>
@@ -1108,7 +1108,7 @@ const Admin = () => {
                     {selectedInvestor && selectedTrip && assignmentAmount ? (
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Investor:</span>
+                          <span className="text-muted-foreground">Lender:</span>
                           <span className="font-medium">
                             {investors.find(inv => inv.id.toString() === selectedInvestor)?.name}
                           </span>
@@ -1137,14 +1137,14 @@ const Admin = () => {
                             disabled={isAssigning}
                             className="w-full"
                           >
-                            {isAssigning ? "Assigning..." : "Assign Trip to Investor"}
+                            {isAssigning ? "Assigning..." : "Assign Trip to Lender"}
                           </Button>
                         </div>
                       </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Select investor, trip, and amount to preview assignment</p>
+                        <p>Select lender, trip, and amount to preview assignment</p>
                       </div>
                     )}
                   </div>
@@ -1221,7 +1221,7 @@ const Admin = () => {
                 Percent Allocation Calculator
               </CardTitle>
               <CardDescription>
-                Calculate percentage distribution when receiving amounts from investors
+                Calculate percentage distribution when receiving amounts from lenders
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1240,7 +1240,7 @@ const Admin = () => {
                         <h5 className="font-medium text-primary">RR Trip Allocation</h5>
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm">Investors:</span>
+                            <span className="text-sm">Lenders:</span>
                             <div className="flex items-center gap-2">
                               <Input
                                 type="number"
@@ -1274,7 +1274,7 @@ const Admin = () => {
                         <h5 className="font-medium text-warning">Other Company Trip Allocation</h5>
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm">Investors:</span>
+                            <span className="text-sm">Lenders:</span>
                             <div className="flex items-center gap-2">
                               <Input
                                 type="number"
