@@ -519,7 +519,7 @@ const Dashboard = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/10" />
         <div className="absolute -top-4 -right-4 w-32 h-32 bg-white/10 rounded-full" />
         <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-white/5 rounded-full" />
-      </div>
+      </header>
 
       {/* Metrics Overview */}
       <div className="space-y-4">
@@ -854,7 +854,7 @@ const Dashboard = () => {
         </CardContent>
       </Card>
       </div>
-    </div>
+    </main>
   );
 };
 

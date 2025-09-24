@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProfilePicture from "@/components/ProfilePicture";
 import {
   User,
   Settings,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { KYCStorage } from "@/utils/kycStorage";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 interface ProfileDropdownProps {
   userEmail?: string;
@@ -36,6 +38,13 @@ export const ProfileDropdown = ({
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const { logout } = useAuth();
+
+  // Get user profile data
+  const { profile } = useUserProfile();
+
+  // Use profile data if available, otherwise fallback to props
+  const displayName = profile?.fullName || userName;
+  const displayEmail = profile?.email || userEmail;
 
   // Get KYC status
   const kycData = KYCStorage.getKYCData();
@@ -74,10 +83,6 @@ export const ProfileDropdown = ({
     setIsOpen(false);
   };
 
-  // Get initials for avatar
-  const getInitials = (name: string) => {
-    return name.split(' ').map(part => part.charAt(0)).join('').toUpperCase();
-  };
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -86,15 +91,16 @@ export const ProfileDropdown = ({
           variant="ghost"
           className="flex items-center gap-2 px-3 py-2 h-auto hover:bg-muted"
         >
-          <Avatar className="h-8 w-8">
-            <AvatarImage src="" alt={userName} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              {getInitials(userName)}
-            </AvatarFallback>
-          </Avatar>
+          <ProfilePicture
+            profilePic={profile?.profilePicture}
+            userName={displayName}
+            size="sm"
+            className="h-8 w-8"
+            refreshKey={profile?.updated || profile?.etag}
+          />
           <div className="flex flex-col items-start text-left min-w-0">
-            <span className="text-sm font-medium truncate max-w-32">{userName}</span>
-            <span className="text-xs text-muted-foreground truncate max-w-32">{userEmail}</span>
+            <span className="text-sm font-medium truncate max-w-32">{displayName}</span>
+            <span className="text-xs text-muted-foreground truncate max-w-32">{displayEmail}</span>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
@@ -103,15 +109,16 @@ export const ProfileDropdown = ({
       <DropdownMenuContent align="end" className="w-64 p-2">
         <DropdownMenuLabel>
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src="" alt={userName} />
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials(userName)}
-              </AvatarFallback>
-            </Avatar>
+            <ProfilePicture
+              profilePic={profile?.profilePicture}
+              userName={displayName}
+              size="md"
+              className="h-10 w-10"
+              refreshKey={profile?.updated || profile?.etag}
+            />
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold truncate">{userName}</span>
-              <span className="text-sm text-muted-foreground truncate">{userEmail}</span>
+              <span className="font-semibold truncate">{displayName}</span>
+              <span className="text-sm text-muted-foreground truncate">{displayEmail}</span>
             </div>
           </div>
         </DropdownMenuLabel>
