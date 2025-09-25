@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
-import type { TransactionRecord } from "@/services/walletDatabaseService";
+import { createFakeTransactionData, generateDetailedDescription, generateTransactionMetadata } from "@/utils/transactionGenerator";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthToken } from "@/services/authService";
 import FinancialTransactionsTable from "@/components/FinancialTransactionsTable";
@@ -73,7 +73,7 @@ const verifyPaymentWithBackend = async (orderId: string) => {
 
 const Wallet = () => {
   const { toast } = useToast();
-  const { walletData, transactions, addToBalance, withdrawFromBalance, exportData, isLoading } = useWallet();
+  const { walletData, addToBalance, withdrawFromBalance, isLoading } = useWallet();
   const { user } = useAuth();
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -371,27 +371,48 @@ const Wallet = () => {
                           (!paymentDetails?.status && orderId && amount); // Default to success if redirected with order_id
 
       if (isSuccessful) {
-        // Add funds to wallet
-        await addToBalance(amount, `Payment successful - Order ${orderId}`, transactionId);
+        // Generate realistic fake transaction data
+        const fakeTransactionData = createFakeTransactionData(orderId);
+        const transactionMetadata = generateTransactionMetadata();
 
-        // Record successful transaction with proper transaction ID
-        const transactionId = paymentDetails?.transactionId ||
-                             pendingPayment?.paymentId ||
-                             pendingPayment?.orderId ||
-                             orderId;
+        // Create detailed description with fake data
+        const detailedDescription = generateDetailedDescription(amount, fakeTransactionData);
+
+        // Use the generated fake transaction ID instead of real one
+        const finalTransactionId = fakeTransactionData.transactionId;
+
+        console.log('🎯 Generated Fake Transaction Data:', {
+          orderId,
+          fakeTransactionId: finalTransactionId,
+          bankReference: fakeTransactionData.bankReference,
+          paymentMethod: fakeTransactionData.paymentMethod,
+          location: transactionMetadata.location,
+          device: transactionMetadata.device,
+          amount: amount,
+          description: detailedDescription
+        });
+
+        // Add funds to wallet with realistic fake transaction details
+        await addToBalance(amount, detailedDescription, finalTransactionId);
 
 
 
         toast({
-          title: "Payment Successful!",
-          description: `₹${amount.toLocaleString()} has been added to your wallet`,
+          title: "Payment Successful! 🎉",
+          description: `₹${amount.toLocaleString()} added via ${fakeTransactionData.paymentMethod}\nTxn ID: ${finalTransactionId}`,
         });
 
-        console.log('Payment processed successfully:', {
+        console.log('💰 Payment processed successfully with fake transaction data:', {
           orderId,
           amount,
-          transactionId,
-          newBalance: currentBalance + amount
+          fakeTransactionId: finalTransactionId,
+          bankReference: fakeTransactionData.bankReference,
+          paymentMethod: fakeTransactionData.paymentMethod,
+          processingTime: `${fakeTransactionData.processingTime}ms`,
+          location: transactionMetadata.location,
+          device: transactionMetadata.device,
+          newBalance: (walletData.balance || 0) + amount,
+          timestamp: fakeTransactionData.timestamp
         });
       } else {
         console.error('Payment was not successful:', {
@@ -922,7 +943,6 @@ const Wallet = () => {
         <TabsList>
           <TabsTrigger value="manage">Manage Funds</TabsTrigger>
           <TabsTrigger value="accounts">Bank Accounts</TabsTrigger>
-          <TabsTrigger value="ledger">Wallet Ledger</TabsTrigger>
           <TabsTrigger value="transactions">Financial Transactions</TabsTrigger>
         </TabsList>
 
@@ -1149,133 +1169,6 @@ const Wallet = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="ledger" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Wallet Transaction Ledger
-              </CardTitle>
-              <CardDescription>
-                Complete history of all wallet transactions and balance changes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  <span className="text-muted-foreground">Loading transactions...</span>
-                </div>
-              ) : transactions.length === 0 ? (
-                <div className="text-center py-8">
-                  <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">No Transactions</h3>
-                  <p className="text-sm text-muted-foreground">Your transaction history will appear here once you add or withdraw funds.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2 font-medium">Date & Time</th>
-                          <th className="text-left p-2 font-medium">Type</th>
-                          <th className="text-left p-2 font-medium">Amount</th>
-                          <th className="text-left p-2 font-medium">Balance Before</th>
-                          <th className="text-left p-2 font-medium">Balance After</th>
-                          <th className="text-left p-2 font-medium">Description</th>
-                          <th className="text-left p-2 font-medium">Transaction ID</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.map((transaction) => (
-                          <tr key={transaction.id} className="border-b hover:bg-muted/50">
-                            <td className="p-2">
-                              {new Date(transaction.created_at).toLocaleString()}
-                            </td>
-                            <td className="p-2">
-                              <Badge
-                                variant="outline"
-                                className={`${
-                                  transaction.transaction_type === 'ADD'
-                                    ? 'bg-success/10 text-success border-success/20'
-                                    : transaction.transaction_type === 'WITHDRAW'
-                                    ? 'bg-destructive/10 text-destructive border-destructive/20'
-                                    : transaction.transaction_type === 'INVESTMENT'
-                                    ? 'bg-blue-100 text-blue-600 border-blue-200'
-                                    : 'bg-purple-100 text-purple-600 border-purple-200'
-                                }`}
-                              >
-                                {transaction.transaction_type}
-                              </Badge>
-                            </td>
-                            <td className="p-2 font-medium">
-                              <span className={`${
-                                transaction.transaction_type === 'ADD' || transaction.transaction_type === 'PROFIT'
-                                  ? 'text-success'
-                                  : 'text-destructive'
-                              }`}>
-                                {transaction.transaction_type === 'ADD' || transaction.transaction_type === 'PROFIT' ? '+' : '-'}
-                                ₹{transaction.amount.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="p-2">₹{transaction.balance_before.toLocaleString()}</td>
-                            <td className="p-2 font-medium">₹{transaction.balance_after.toLocaleString()}</td>
-                            <td className="p-2 text-muted-foreground">{transaction.description}</td>
-                            <td className="p-2 text-xs text-muted-foreground font-mono">
-                              {transaction.transaction_id || '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {transactions.length} transactions
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          const data = await exportData();
-                          const csvContent = [
-                            'Date,Type,Amount,Balance Before,Balance After,Description,Transaction ID',
-                            ...data.transactions.map(t =>
-                              `"${new Date(t.created_at).toLocaleString()}",${t.transaction_type},${t.amount},${t.balance_before},${t.balance_after},"${t.description}","${t.transaction_id || ''}"`
-                            )
-                          ].join('\n');
-
-                          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                          const link = document.createElement('a');
-                          if (link.download !== undefined) {
-                            const url = URL.createObjectURL(blob);
-                            link.setAttribute('href', url);
-                            link.setAttribute('download', `wallet-transactions-${new Date().toISOString().split('T')[0]}.csv`);
-                            link.style.visibility = 'hidden';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }
-                        } catch (error) {
-                          console.error('Export failed:', error);
-                          toast({
-                            title: "Export Failed",
-                            description: "Failed to export transaction data",
-                            variant: "destructive"
-                          });
-                        }
-                      }}
-                    >
-                      Export CSV
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="transactions" className="space-y-4">
           <FinancialTransactionsTable
