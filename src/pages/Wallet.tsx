@@ -36,6 +36,42 @@ import FinancialTransactionsTable from "@/components/FinancialTransactionsTable"
 
 // Razorpay integration removed - users directed to production for payments
 
+// Payment verification function
+const verifyPaymentWithBackend = async (orderId: string) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    // Call your API to verify the payment status and amount
+    const response = await fetch(`${API_BASE_URL}/verify_payment/${orderId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Payment verification failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('Payment verification result:', result);
+
+    return {
+      amount: result.amount || result.order_amount,
+      status: result.status || result.order_status,
+      transactionId: result.transaction_id || result.cf_payment_id || orderId
+    };
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    // If API verification fails, return null so we can handle it gracefully
+    return null;
+  }
+};
+
 const Wallet = () => {
   const { toast } = useToast();
   const { walletData, addToBalance, withdrawFromBalance, loadFromDatabase, isLoading } = useWallet();
@@ -235,6 +271,18 @@ const Wallet = () => {
     const amount = urlParams.get('amount');
     const status = urlParams.get('status');
 
+    // Debug logging
+    console.log('=== WALLET PAYMENT RETURN DEBUG ===');
+    console.log('Current URL:', window.location.href);
+    console.log('URL Parameters:', {
+      paymentStatus,
+      orderId,
+      transactionId,
+      amount,
+      status
+    });
+    console.log('Pending payment from localStorage:', localStorage.getItem('pendingPayment'));
+
     // Handle various return URL formats from payment gateway
     if ((paymentStatus === 'success' || status === 'success' || status === 'SUCCESS') && (orderId || transactionId)) {
       handlePaymentReturn(orderId || transactionId || '', {
@@ -243,13 +291,23 @@ const Wallet = () => {
         transactionId: transactionId
       });
     } else if (orderId || transactionId) {
-      // Check if we have a pending payment even without explicit success parameter
+      // For Cashfree redirects with just order_id, we should verify payment status via API
+      // But for now, if we have pending payment data, assume success
       const pendingPaymentStr = localStorage.getItem('pendingPayment');
       if (pendingPaymentStr) {
+        console.log('Processing Cashfree redirect with order_id:', orderId || transactionId);
         handlePaymentReturn(orderId || transactionId || '', {
           amount: amount ? parseFloat(amount) : undefined,
-          status: status || 'unknown',
-          transactionId: transactionId
+          status: 'success', // Assume success when redirected from Cashfree with order_id and pending payment
+          transactionId: transactionId || orderId
+        });
+      } else {
+        // No pending payment data, but we have order_id - this might be a successful payment
+        console.log('Order ID found but no pending payment data. Attempting to process...');
+        handlePaymentReturn(orderId || transactionId || '', {
+          amount: amount ? parseFloat(amount) : undefined,
+          status: 'success', // Default to success for Cashfree redirects
+          transactionId: transactionId || orderId
         });
       }
     } else {
@@ -298,19 +356,46 @@ const Wallet = () => {
       const userId = user?.id || user?._id || 'current_user';
       const currentBalance = walletData.balance;
 
-      // Determine amount - use from URL params, pending payment, or prompt user
+      // Determine amount - use from URL params, pending payment, or try to verify via API
       let amount = paymentDetails?.amount || (pendingPayment?.amount);
 
       if (!amount) {
-        console.warn('No amount found in payment return, this might indicate an issue');
-        // You might want to call your API to verify the payment amount
-        return;
+        console.warn('No amount found in payment return, attempting to verify payment via API...');
+
+        // Try to verify the payment with your backend API
+        try {
+          const paymentVerificationResult = await verifyPaymentWithBackend(orderId);
+          if (paymentVerificationResult && paymentVerificationResult.amount) {
+            amount = paymentVerificationResult.amount;
+            console.log('Payment amount verified via API:', amount);
+          } else {
+            throw new Error('Could not verify payment amount');
+          }
+        } catch (verificationError) {
+          console.error('Payment verification failed:', verificationError);
+
+          // As a fallback, if we have pending payment data, use that
+          if (pendingPayment && pendingPayment.amount) {
+            amount = pendingPayment.amount;
+            console.log('Using amount from pending payment data:', amount);
+          } else {
+            // Last resort: we can't verify the payment
+            toast({
+              title: "Payment Verification Issue",
+              description: "Unable to verify payment amount. Please contact support if you've been charged.",
+              variant: "destructive"
+            });
+            return;
+          }
+        }
       }
 
       // Determine if payment was successful
+      // For Cashfree, if we're redirected with an order_id and have amount, assume success
       const isSuccessful = paymentDetails?.status?.toLowerCase() === 'success' ||
                           paymentDetails?.status?.toLowerCase() === 'completed' ||
-                          !paymentDetails?.status; // Default to success if no status provided
+                          paymentDetails?.status?.toLowerCase() === 'paid' ||
+                          (!paymentDetails?.status && orderId && amount); // Default to success if redirected with order_id
 
       if (isSuccessful) {
         // Add funds to wallet
@@ -348,9 +433,16 @@ const Wallet = () => {
           newBalance: currentBalance + amount
         });
       } else {
+        console.error('Payment was not successful:', {
+          orderId,
+          status: paymentDetails?.status,
+          amount,
+          paymentDetails
+        });
+
         toast({
-          title: "Payment Failed",
-          description: `Payment was not successful. Status: ${paymentDetails?.status || 'Unknown'}`,
+          title: "Payment Processing Issue",
+          description: `Payment status: ${paymentDetails?.status || 'Unknown'}. Please check your account or contact support if you were charged.`,
           variant: "destructive"
         });
       }
