@@ -32,6 +32,17 @@ interface WalletTransaction {
   metadata?: string; // JSON string for additional data
   verified_at?: string; // When payment was verified
   verification_method?: 'API' | 'WEBHOOK' | 'MANUAL';
+
+  // Enhanced accounting fields
+  transaction_id: string; // Unique transaction identifier for accounting
+  party_name?: string; // Party involved (Cashfree, User, Bank, etc.)
+  party_type?: 'PAYMENT_GATEWAY' | 'USER' | 'BANK' | 'SYSTEM';
+  note: string; // Accounting note/description
+  payment_mode: 'ONLINE' | 'UPI' | 'CARD' | 'BANK_TRANSFER' | 'CASH' | 'WALLET';
+  entry_type: 'DEBIT' | 'CREDIT'; // Accounting entry type
+  chart_of_account?: string; // Chart of accounts reference
+  voucher_number?: string; // Accounting voucher number
+
   created_date: string;
   updated_date?: string;
 }
@@ -232,7 +243,19 @@ class IndexedDBService {
           if (!store.indexNames.contains('verified_at')) {
             store.createIndex('verified_at', 'verified_at', { unique: false });
           }
-          console.log('Enhanced wallet_transactions indexes');
+          if (!store.indexNames.contains('transaction_id')) {
+            store.createIndex('transaction_id', 'transaction_id', { unique: false });
+          }
+          if (!store.indexNames.contains('party_name')) {
+            store.createIndex('party_name', 'party_name', { unique: false });
+          }
+          if (!store.indexNames.contains('entry_type')) {
+            store.createIndex('entry_type', 'entry_type', { unique: false });
+          }
+          if (!store.indexNames.contains('payment_mode')) {
+            store.createIndex('payment_mode', 'payment_mode', { unique: false });
+          }
+          console.log('Enhanced wallet_transactions indexes with accounting fields');
         }
       };
     });

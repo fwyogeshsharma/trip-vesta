@@ -23,7 +23,8 @@ import {
   X,
   Loader2,
   Flag,
-  RefreshCw
+  RefreshCw,
+  Database
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
@@ -422,11 +423,20 @@ const Wallet = () => {
             referenceId: orderId,
             gatewayResponse: paymentDetails,
             verificationMethod: 'API',
+            // Enhanced accounting fields
+            partyName: 'Cashfree Payments India Pvt Ltd',
+            partyType: 'PAYMENT_GATEWAY',
+            paymentMode: 'ONLINE',
+            customNote: `Wallet credit via Cashfree payment gateway - Order ID: ${orderId} - Amount: ₹${amount.toLocaleString()}`,
+            chartOfAccount: 'DIGITAL_WALLET_RECEIPTS',
+            voucherNumber: `CF-${orderId}-${Date.now()}`,
             metadata: {
               original_url: window.location.href,
               payment_timestamp: new Date().toISOString(),
               order_id: orderId,
-              user_agent: navigator.userAgent
+              user_agent: navigator.userAgent,
+              accounting_period: new Date().toISOString().split('T')[0],
+              transaction_category: 'WALLET_TOPUP'
             }
           }
         );
@@ -491,6 +501,7 @@ const Wallet = () => {
   };
 
   // Removed Razorpay script loading - directing users to production
+
 
   const handleSetActiveAccount = async (accountId: number) => {
     try {
@@ -653,7 +664,27 @@ const Wallet = () => {
           currentBalance - amountToWithdraw,
           `Withdrawal to ${activeAccount?.bank || 'bank account'} - ₹${amountToWithdraw}`,
           activeAccount?.id,
-          `withdraw_${Date.now()}`
+          `withdraw_${Date.now()}`,
+          {
+            transactionSource: 'BANK_TRANSFER',
+            referenceId: `WD${Date.now()}`,
+            verificationMethod: 'SYSTEM',
+            // Enhanced accounting fields
+            partyName: activeAccount?.bank || 'Bank Account',
+            partyType: 'BANK',
+            paymentMode: 'BANK_TRANSFER',
+            customNote: `Wallet withdrawal to ${activeAccount?.bank || 'bank'} account - Amount: ₹${amountToWithdraw.toLocaleString()}`,
+            chartOfAccount: 'DIGITAL_WALLET_PAYMENTS',
+            voucherNumber: `WD-${Date.now()}`,
+            metadata: {
+              bank_account_id: activeAccount?.id,
+              bank_name: activeAccount?.bank,
+              account_number: activeAccount?.accountNumber,
+              withdrawal_timestamp: new Date().toISOString(),
+              accounting_period: new Date().toISOString().split('T')[0],
+              transaction_category: 'WALLET_WITHDRAWAL'
+            }
+          }
         );
         console.log('Withdrawal transaction recorded');
       } catch (dbError) {
@@ -1021,17 +1052,18 @@ const Wallet = () => {
           <div className="flex items-center gap-3">
             <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
             <div className="flex-1">
-              <h3 className="font-semibold text-green-800">Enhanced Database System Active</h3>
+              <h3 className="font-semibold text-green-800">Enhanced Accounting System Active</h3>
               <p className="text-sm text-green-700">
-                Complete transaction tracking • Automatic backups • Integrity verification • Audit logs
+                Professional ledger format • Complete audit trail • Accounting compliance • Automatic vouchers
               </p>
             </div>
             <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-              Strengthened
+              Accounting Ready
             </Badge>
           </div>
         </CardContent>
       </Card>
+
 
       <Tabs defaultValue="manage" className="space-y-4">
         <TabsList>

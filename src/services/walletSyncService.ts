@@ -112,11 +112,53 @@ export class WalletSyncService {
       feeAmount?: number;
       verificationMethod?: 'API' | 'WEBHOOK' | 'MANUAL';
       metadata?: any;
+      // New accounting fields
+      partyName?: string;
+      partyType?: 'PAYMENT_GATEWAY' | 'USER' | 'BANK' | 'SYSTEM';
+      paymentMode?: 'ONLINE' | 'UPI' | 'CARD' | 'BANK_TRANSFER' | 'CASH' | 'WALLET';
+      chartOfAccount?: string;
+      voucherNumber?: string;
+      customNote?: string;
     }
   ): Promise<number> {
     try {
       const now = new Date().toISOString();
       const netAmount = additionalData?.feeAmount ? amount - additionalData.feeAmount : amount;
+
+      // Generate unique transaction ID for accounting
+      const transactionId = additionalData?.referenceId ||
+                           `TXN${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+
+      // Determine entry type based on transaction type
+      const entryType: 'DEBIT' | 'CREDIT' = ['WITHDRAW', 'INVESTMENT'].includes(transactionType) ? 'DEBIT' : 'CREDIT';
+
+      // Determine party based on transaction source
+      let partyName = additionalData?.partyName;
+      let partyType = additionalData?.partyType;
+
+      if (!partyName) {
+        switch (additionalData?.transactionSource) {
+          case 'CASHFREE':
+            partyName = 'Cashfree Payments';
+            partyType = 'PAYMENT_GATEWAY';
+            break;
+          case 'RAZORPAY':
+            partyName = 'Razorpay';
+            partyType = 'PAYMENT_GATEWAY';
+            break;
+          case 'BANK_TRANSFER':
+            partyName = 'Bank';
+            partyType = 'BANK';
+            break;
+          default:
+            partyName = 'System';
+            partyType = 'SYSTEM';
+        }
+      }
+
+      // Create accounting note
+      const accountingNote = additionalData?.customNote ||
+        `${transactionType.replace('_', ' ')} - ${description} via ${additionalData?.transactionSource || 'SYSTEM'}`;
 
       const transaction: Omit<WalletTransaction, 'id' | 'created_date' | 'updated_date'> = {
         user_id: userId,
@@ -135,7 +177,17 @@ export class WalletSyncService {
         net_amount: netAmount,
         metadata: additionalData?.metadata ? JSON.stringify(additionalData.metadata) : undefined,
         verified_at: now,
-        verification_method: additionalData?.verificationMethod || 'SYSTEM'
+        verification_method: additionalData?.verificationMethod || 'SYSTEM',
+
+        // Enhanced accounting fields
+        transaction_id: transactionId,
+        party_name: partyName,
+        party_type: partyType,
+        note: accountingNote,
+        payment_mode: additionalData?.paymentMode || 'ONLINE',
+        entry_type: entryType,
+        chart_of_account: additionalData?.chartOfAccount || 'WALLET_BALANCE',
+        voucher_number: additionalData?.voucherNumber || `VCH${Date.now()}`
       };
 
       const localTransactionId = await indexedDBService.addTransaction(transaction);

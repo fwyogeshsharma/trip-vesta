@@ -37,6 +37,120 @@ const WalletTransactionsTable: React.FC = () => {
 
   const userId = user?.id || user?._id || 'current_user';
 
+  // Sample transactions for demonstration when no real data exists
+  const createSampleTransactions = (): WalletTransaction[] => {
+    const baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() - 7); // Start from 7 days ago
+
+    return [
+      {
+        id: 'sample-1',
+        user_id: userId,
+        transaction_id: `TXN${Date.now()}001`,
+        api_transaction_id: undefined,
+        reference_id: 'CF-sample-order-001',
+        type: 'ADD_FUNDS',
+        amount: 2500,
+        net_amount: 2500,
+        fee_amount: 0,
+        currency: 'INR',
+        status: 'COMPLETED',
+        description: 'Sample wallet credit via payment gateway',
+        balance_before: 0,
+        balance_after: 2500,
+        created_date: new Date(baseDate.getTime() + 1 * 60 * 60 * 1000).toISOString(),
+        updated_date: new Date(baseDate.getTime() + 1 * 60 * 60 * 1000).toISOString(),
+        transaction_source: 'CASHFREE',
+        verification_method: 'API',
+        verified_at: new Date(baseDate.getTime() + 1 * 60 * 60 * 1000).toISOString(),
+        gateway_response: JSON.stringify({
+          order_id: 'CF-sample-order-001',
+          payment_status: 'SUCCESS',
+          payment_method: 'UPI'
+        }),
+        metadata: JSON.stringify({
+          demo: true,
+          sample_data: true
+        }),
+        party_name: 'Cashfree Payments India Pvt Ltd',
+        party_type: 'PAYMENT_GATEWAY' as const,
+        note: 'Sample wallet credit via Cashfree payment gateway - Order ID: CF-sample-order-001 - Amount: ₹2,500',
+        payment_mode: 'ONLINE' as const,
+        entry_type: 'CREDIT' as const,
+        chart_of_account: 'DIGITAL_WALLET_RECEIPTS',
+        voucher_number: `CF-sample-order-001-${Date.now()}`
+      },
+      {
+        id: 'sample-2',
+        user_id: userId,
+        transaction_id: `TXN${Date.now()}002`,
+        api_transaction_id: undefined,
+        reference_id: 'INV-sample-002',
+        type: 'INVESTMENT',
+        amount: 1500,
+        net_amount: 1500,
+        fee_amount: 0,
+        currency: 'INR',
+        status: 'COMPLETED',
+        description: 'Sample investment in property project',
+        balance_before: 2500,
+        balance_after: 1000,
+        created_date: new Date(baseDate.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_date: new Date(baseDate.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        transaction_source: 'INVESTMENT',
+        verification_method: 'SYSTEM',
+        verified_at: new Date(baseDate.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        gateway_response: undefined,
+        metadata: JSON.stringify({
+          demo: true,
+          sample_data: true,
+          property_id: 'PROP-001'
+        }),
+        party_name: 'RollingRadius Properties',
+        party_type: 'SYSTEM' as const,
+        note: 'Sample investment in luxury property project - Project ID: PROP-001 - Amount: ₹1,500',
+        payment_mode: 'WALLET' as const,
+        entry_type: 'DEBIT' as const,
+        chart_of_account: 'INVESTMENT_DEBITS',
+        voucher_number: `INV-sample-002-${Date.now()}`
+      },
+      {
+        id: 'sample-3',
+        user_id: userId,
+        transaction_id: `TXN${Date.now()}003`,
+        api_transaction_id: undefined,
+        reference_id: 'PROFIT-sample-003',
+        type: 'PROFIT',
+        amount: 250,
+        net_amount: 250,
+        fee_amount: 0,
+        currency: 'INR',
+        status: 'COMPLETED',
+        description: 'Sample profit earned from investment',
+        balance_before: 1000,
+        balance_after: 1250,
+        created_date: new Date(baseDate.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        updated_date: new Date(baseDate.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        transaction_source: 'PROFIT',
+        verification_method: 'SYSTEM',
+        verified_at: new Date(baseDate.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        gateway_response: undefined,
+        metadata: JSON.stringify({
+          demo: true,
+          sample_data: true,
+          profit_rate: '16.67%'
+        }),
+        party_name: 'RollingRadius Properties',
+        party_type: 'SYSTEM' as const,
+        note: 'Sample profit earned from property investment - ROI: 16.67% - Amount: ₹250',
+        payment_mode: 'WALLET' as const,
+        entry_type: 'CREDIT' as const,
+        chart_of_account: 'PROFIT_CREDITS',
+        voucher_number: `PROFIT-sample-003-${Date.now()}`
+      }
+    ];
+  };
+
   const loadWalletData = async () => {
     setLoading(true);
     setError(null);
@@ -46,7 +160,15 @@ const WalletTransactionsTable: React.FC = () => {
 
       // Load wallet transactions
       const walletTransactions = await walletSyncService.getWalletTransactionHistory(userId);
-      setTransactions(walletTransactions);
+
+      // If no real transactions exist, show sample transactions for demonstration
+      if (walletTransactions.length === 0) {
+        const sampleTransactions = createSampleTransactions();
+        setTransactions(sampleTransactions);
+        console.log('No real transactions found, showing sample data for demonstration');
+      } else {
+        setTransactions(walletTransactions);
+      }
 
       // Load audit logs (only load from indexedDB if implemented)
       try {
@@ -141,8 +263,12 @@ const WalletTransactionsTable: React.FC = () => {
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-500">Transaction ID</label>
+            <label className="text-sm font-medium text-gray-500">Local ID</label>
             <p className="text-sm">{transaction.id}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Transaction ID (Accounting)</label>
+            <p className="text-sm font-mono font-bold">{transaction.transaction_id}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500">API Transaction ID</label>
@@ -151,6 +277,32 @@ const WalletTransactionsTable: React.FC = () => {
           <div>
             <label className="text-sm font-medium text-gray-500">Reference ID</label>
             <p className="text-sm">{transaction.reference_id || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Party Name</label>
+            <p className="text-sm font-medium">{transaction.party_name || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Party Type</label>
+            <p className="text-sm">{transaction.party_type || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Payment Mode</label>
+            <p className="text-sm">{transaction.payment_mode || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Entry Type</label>
+            <p className={`text-sm font-bold ${transaction.entry_type === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+              {transaction.entry_type}
+            </p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Voucher Number</label>
+            <p className="text-sm">{transaction.voucher_number || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Chart of Account</label>
+            <p className="text-sm">{transaction.chart_of_account || 'N/A'}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500">Transaction Source</label>
@@ -191,8 +343,13 @@ const WalletTransactionsTable: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-500">Description</label>
+          <label className="text-sm font-medium text-gray-500">Original Description</label>
           <p className="text-sm">{transaction.description}</p>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-gray-500">Accounting Note</label>
+          <p className="text-sm font-medium bg-blue-50 p-2 rounded">{transaction.note || transaction.description}</p>
         </div>
 
         {transaction.gateway_response && (
@@ -268,23 +425,34 @@ const WalletTransactionsTable: React.FC = () => {
           </TabsList>
 
           <TabsContent value="transactions" className="space-y-4">
+            {transactions.length > 0 && transactions.some(t => t.id.includes('sample')) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <Database className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    Sample transaction records are shown for demonstration. Real transactions will replace these when you add funds.
+                  </span>
+                </div>
+              </div>
+            )}
             <ScrollArea className="h-[600px] w-full rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Transaction ID</TableHead>
+                    <TableHead>Party</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead>Payment Mode</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Balance</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Source</TableHead>
+                    <TableHead>Entry Type</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         <div className="text-muted-foreground">
                           <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
                           No wallet transactions found in local database
@@ -293,17 +461,48 @@ const WalletTransactionsTable: React.FC = () => {
                     </TableRow>
                   ) : (
                     transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell className="text-sm">
-                          {formatDateTime(transaction.created_date)}
+                      <TableRow key={transaction.id} className="hover:bg-muted/30">
+                        <TableCell className="text-sm font-mono">
+                          <div>{formatDateTime(transaction.created_date).split(',')[0]}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDateTime(transaction.created_date).split(',')[1]}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          <div className="font-medium">{transaction.transaction_id}</div>
+                          {transaction.reference_id && (
+                            <div className="text-xs text-muted-foreground">
+                              Ref: {transaction.reference_id}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Badge className={getTransactionTypeColor(transaction.transaction_type)}>
-                            {transaction.transaction_type}
+                          <div className="font-medium">{transaction.party_name || 'N/A'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {transaction.party_type || 'Unknown'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <div className="text-sm truncate" title={transaction.note}>
+                            {transaction.note || transaction.description}
+                          </div>
+                          {transaction.voucher_number && (
+                            <div className="text-xs text-muted-foreground">
+                              Voucher: {transaction.voucher_number}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {transaction.payment_mode || 'ONLINE'}
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(transaction.amount)}
+                          <div className={`text-lg font-bold ${
+                            transaction.entry_type === 'CREDIT' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {transaction.entry_type === 'CREDIT' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                          </div>
                           {transaction.fee_amount && transaction.fee_amount > 0 && (
                             <div className="text-xs text-muted-foreground">
                               Fee: {formatCurrency(transaction.fee_amount)}
@@ -311,20 +510,15 @@ const WalletTransactionsTable: React.FC = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">
-                            <div>After: {formatCurrency(transaction.balance_after)}</div>
-                            <div className="text-xs text-muted-foreground">
-                              Before: {formatCurrency(transaction.balance_before)}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(transaction.status)}>
-                            {transaction.status}
+                          <Badge
+                            className={
+                              transaction.entry_type === 'CREDIT'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }
+                          >
+                            {transaction.entry_type}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {transaction.transaction_source || 'SYSTEM'}
                         </TableCell>
                         <TableCell>
                           <Dialog>
