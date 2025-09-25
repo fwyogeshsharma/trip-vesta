@@ -252,6 +252,25 @@ const Wallet = () => {
           transactionId: transactionId
         });
       }
+    } else {
+      // Check for any pending payment even without URL parameters (in case user was logged out and back in)
+      const pendingPaymentStr = localStorage.getItem('pendingPayment');
+      if (pendingPaymentStr) {
+        try {
+          const pendingPayment = JSON.parse(pendingPaymentStr);
+          if (pendingPayment.orderId) {
+            console.log('Found pending payment without URL params, processing...', pendingPayment);
+            handlePaymentReturn(pendingPayment.orderId, {
+              amount: pendingPayment.amount,
+              status: 'success', // Assume success if we have pending payment data
+              transactionId: pendingPayment.paymentId || pendingPayment.orderId
+            });
+          }
+        } catch (error) {
+          console.error('Error processing pending payment from localStorage:', error);
+          localStorage.removeItem('pendingPayment'); // Clean up invalid data
+        }
+      }
     }
   }, []);
 
@@ -423,7 +442,7 @@ const Wallet = () => {
         mode_of_payment: "Online",
         order_note: "Lender Investment",
         paying_user: "6257f1d75b42235a2ae4ab34",
-        product_or_service: "61422c0a1778a2a004068c63",
+        product_or_service: "68d3f6fb262b4bc5964b6a68",
         receiving_user: "6257f1d75b42235a2ae4ab34"
       };
 
@@ -457,6 +476,16 @@ const Wallet = () => {
                          result.data?.payment_url;
 
       if (paymentLink) {
+        // Store pending payment information for later processing
+        const pendingPayment = {
+          amount: parseFloat(addAmount),
+          orderId: result.orderId || result.order_id || result.id || `payment_${Date.now()}`,
+          paymentId: result.paymentId || result.payment_id || result.id,
+          timestamp: new Date().toISOString(),
+          userId: user?.id || user?._id || 'current_user'
+        };
+        localStorage.setItem('pendingPayment', JSON.stringify(pendingPayment));
+
         toast({
           title: "Redirecting to Payment",
           description: "You will be redirected to complete the payment",

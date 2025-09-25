@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,17 @@ const Login = () => {
   const [sessionId, setSessionId] = useState<string | undefined>();
   const { toast } = useToast();
   const { login } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Store the current URL when component mounts for redirect after login
+  useEffect(() => {
+    if (location.pathname !== '/login' || location.search) {
+      // Store the complete URL (including query parameters) for redirect after login
+      const redirectUrl = location.pathname + location.search;
+      localStorage.setItem('redirectAfterLogin', redirectUrl);
+    }
+  }, [location]);
 
   const handleSendOtp = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
@@ -71,10 +83,22 @@ const Login = () => {
         storeAuthToken(response.token);
         storeUserData(response.user);
         login(response.token, response.user);
-        toast({
-          title: "Login Successful",
-          description: "Welcome! Redirecting to dashboard...",
-        });
+
+        // Check if there's a redirect URL stored
+        const redirectUrl = localStorage.getItem('redirectAfterLogin');
+        if (redirectUrl && redirectUrl !== '/login') {
+          localStorage.removeItem('redirectAfterLogin');
+          navigate(redirectUrl, { replace: true });
+          toast({
+            title: "Login Successful",
+            description: "Welcome! Processing your payment...",
+          });
+        } else {
+          toast({
+            title: "Login Successful",
+            description: "Welcome! Redirecting to dashboard...",
+          });
+        }
       } else {
         throw new Error(response.message || "Invalid OTP");
       }
