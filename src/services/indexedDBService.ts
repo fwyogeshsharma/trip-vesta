@@ -16,14 +16,22 @@ interface BankAccount {
 interface WalletTransaction {
   id?: number;
   user_id: string;
-  transaction_type: 'ADD_FUNDS' | 'WITHDRAW' | 'INVESTMENT' | 'PROFIT';
+  transaction_type: 'ADD_FUNDS' | 'WITHDRAW' | 'INVESTMENT' | 'PROFIT' | 'REFUND' | 'ADJUSTMENT';
   amount: number;
   balance_before: number;
   balance_after: number;
   description: string;
   bank_account_id?: number;
   api_transaction_id?: string;
-  status: 'PENDING' | 'COMPLETED' | 'FAILED';
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  transaction_source: 'CASHFREE' | 'RAZORPAY' | 'MANUAL' | 'SYSTEM' | 'BANK_TRANSFER';
+  reference_id?: string; // Payment gateway reference
+  gateway_response?: string; // Full gateway response for audit
+  fee_amount?: number; // Transaction fees
+  net_amount?: number; // Amount after fees
+  metadata?: string; // JSON string for additional data
+  verified_at?: string; // When payment was verified
+  verification_method?: 'API' | 'WEBHOOK' | 'MANUAL';
   created_date: string;
   updated_date?: string;
 }
@@ -35,8 +43,44 @@ interface LocalWalletState {
   total_invested: number;
   total_withdrawn: number;
   profit_earned: number;
+  total_fees_paid: number; // Track transaction fees
+  total_refunds: number; // Track refunds received
+  total_adjustments: number; // Track manual adjustments
+  pending_balance: number; // Amount in pending transactions
+  available_balance: number; // balance - pending_balance
+  last_transaction_id?: number; // Reference to last transaction for integrity
+  checksum?: string; // Data integrity check
   last_sync_date: string;
+  last_api_sync_date?: string; // When data was last synced with server
+  version: number; // For conflict resolution
   updated_date?: string;
+}
+
+// New interface for audit logs
+interface WalletAuditLog {
+  id?: number;
+  user_id: string;
+  action: 'BALANCE_UPDATE' | 'TRANSACTION_ADDED' | 'TRANSACTION_UPDATED' | 'STATE_SYNC' | 'MANUAL_ADJUSTMENT';
+  old_value?: string; // JSON string of old state
+  new_value?: string; // JSON string of new state
+  changed_by: 'USER' | 'SYSTEM' | 'API' | 'PAYMENT_GATEWAY';
+  ip_address?: string;
+  user_agent?: string;
+  session_id?: string;
+  created_date: string;
+}
+
+// New interface for balance snapshots (daily/hourly backups)
+interface BalanceSnapshot {
+  id?: number;
+  user_id: string;
+  balance: number;
+  total_invested: number;
+  total_withdrawn: number;
+  profit_earned: number;
+  transaction_count: number;
+  snapshot_type: 'HOURLY' | 'DAILY' | 'MONTHLY' | 'MANUAL';
+  created_date: string;
 }
 
 interface FinancialTransactionLocal {
@@ -81,7 +125,7 @@ interface FinancialTransactionLocal {
 class IndexedDBService {
   private db: IDBDatabase | null = null;
   private dbName = 'WalletTransactionsDB';
-  private version = 1;
+  private version = 2; // Increased version for schema updates
   private isInitialized = false;
 
   constructor() {
@@ -152,6 +196,43 @@ class IndexedDBService {
           financialTransactionsStore.createIndex('entry_type', 'entry_type', { unique: false });
           financialTransactionsStore.createIndex('synced_at', 'synced_at', { unique: false });
           console.log('Created financial_transactions object store');
+        }
+
+        // Create wallet_audit_logs store (new)
+        if (!db.objectStoreNames.contains('wallet_audit_logs')) {
+          const auditLogsStore = db.createObjectStore('wallet_audit_logs', { keyPath: 'id', autoIncrement: true });
+          auditLogsStore.createIndex('user_id', 'user_id', { unique: false });
+          auditLogsStore.createIndex('action', 'action', { unique: false });
+          auditLogsStore.createIndex('created_date', 'created_date', { unique: false });
+          auditLogsStore.createIndex('changed_by', 'changed_by', { unique: false });
+          console.log('Created wallet_audit_logs object store');
+        }
+
+        // Create balance_snapshots store (new)
+        if (!db.objectStoreNames.contains('balance_snapshots')) {
+          const snapshotsStore = db.createObjectStore('balance_snapshots', { keyPath: 'id', autoIncrement: true });
+          snapshotsStore.createIndex('user_id', 'user_id', { unique: false });
+          snapshotsStore.createIndex('snapshot_type', 'snapshot_type', { unique: false });
+          snapshotsStore.createIndex('created_date', 'created_date', { unique: false });
+          console.log('Created balance_snapshots object store');
+        }
+
+        // Add new indexes to wallet_transactions for enhanced tracking
+        if (db.objectStoreNames.contains('wallet_transactions')) {
+          const transaction = db.transaction(['wallet_transactions'], 'versionchange');
+          const store = transaction.objectStore('wallet_transactions');
+
+          // Check if indexes already exist before creating
+          if (!store.indexNames.contains('transaction_source')) {
+            store.createIndex('transaction_source', 'transaction_source', { unique: false });
+          }
+          if (!store.indexNames.contains('reference_id')) {
+            store.createIndex('reference_id', 'reference_id', { unique: false });
+          }
+          if (!store.indexNames.contains('verified_at')) {
+            store.createIndex('verified_at', 'verified_at', { unique: false });
+          }
+          console.log('Enhanced wallet_transactions indexes');
         }
       };
     });
@@ -867,9 +948,143 @@ class IndexedDBService {
       resolve();
     });
   }
+
+  // New methods for audit logs
+  async addAuditLog(auditLog: Omit<WalletAuditLog, 'id'>): Promise<number> {
+    await this.ensureInitialized();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction(['wallet_audit_logs'], 'readwrite');
+      const store = transaction.objectStore('wallet_audit_logs');
+
+      const auditLogWithTimestamp = {
+        ...auditLog,
+        created_date: auditLog.created_date || new Date().toISOString()
+      };
+
+      const request = store.add(auditLogWithTimestamp);
+
+      request.onsuccess = () => {
+        resolve(request.result as number);
+      };
+
+      request.onerror = () => {
+        console.error('Error adding audit log:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  // New methods for balance snapshots
+  async addBalanceSnapshot(snapshot: Omit<BalanceSnapshot, 'id'>): Promise<number> {
+    await this.ensureInitialized();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction(['balance_snapshots'], 'readwrite');
+      const store = transaction.objectStore('balance_snapshots');
+
+      const snapshotWithTimestamp = {
+        ...snapshot,
+        created_date: snapshot.created_date || new Date().toISOString()
+      };
+
+      const request = store.add(snapshotWithTimestamp);
+
+      request.onsuccess = () => {
+        resolve(request.result as number);
+      };
+
+      request.onerror = () => {
+        console.error('Error adding balance snapshot:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  // Get audit logs for a user
+  async getAuditLogsByUserId(userId: string, limit?: number): Promise<WalletAuditLog[]> {
+    await this.ensureInitialized();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction(['wallet_audit_logs'], 'readonly');
+      const store = transaction.objectStore('wallet_audit_logs');
+      const index = store.index('user_id');
+      const request = index.getAll(userId);
+
+      request.onsuccess = () => {
+        let results = request.result as WalletAuditLog[];
+
+        // Sort by created_date descending (newest first)
+        results.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime());
+
+        // Apply limit if specified
+        if (limit && limit > 0) {
+          results = results.slice(0, limit);
+        }
+
+        resolve(results);
+      };
+
+      request.onerror = () => {
+        console.error('Error fetching audit logs:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  // Get balance snapshots for a user
+  async getBalanceSnapshotsByUserId(userId: string, limit?: number): Promise<BalanceSnapshot[]> {
+    await this.ensureInitialized();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction(['balance_snapshots'], 'readonly');
+      const store = transaction.objectStore('balance_snapshots');
+      const index = store.index('user_id');
+      const request = index.getAll(userId);
+
+      request.onsuccess = () => {
+        let results = request.result as BalanceSnapshot[];
+
+        // Sort by created_date descending (newest first)
+        results.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime());
+
+        // Apply limit if specified
+        if (limit && limit > 0) {
+          results = results.slice(0, limit);
+        }
+
+        resolve(results);
+      };
+
+      request.onerror = () => {
+        console.error('Error fetching balance snapshots:', request.error);
+        reject(request.error);
+      };
+    });
+  }
 }
 
 // Export types and singleton instance
-export type { BankAccount, WalletTransaction, LocalWalletState, FinancialTransactionLocal };
+export type { BankAccount, WalletTransaction, LocalWalletState, FinancialTransactionLocal, WalletAuditLog, BalanceSnapshot };
 export const indexedDBService = new IndexedDBService();
 export default indexedDBService;

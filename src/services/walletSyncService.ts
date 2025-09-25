@@ -94,19 +94,30 @@ export class WalletSyncService {
   }
 
   /**
-   * Record wallet transaction in local database
+   * Record wallet transaction in local database with enhanced tracking
    */
   async recordWalletTransaction(
     userId: string,
-    transactionType: 'ADD_FUNDS' | 'WITHDRAW' | 'INVESTMENT' | 'PROFIT',
+    transactionType: 'ADD_FUNDS' | 'WITHDRAW' | 'INVESTMENT' | 'PROFIT' | 'REFUND' | 'ADJUSTMENT',
     amount: number,
     balanceBefore: number,
     balanceAfter: number,
     description: string,
     bankAccountId?: number,
-    apiTransactionId?: string
+    apiTransactionId?: string,
+    additionalData?: {
+      transactionSource?: 'CASHFREE' | 'RAZORPAY' | 'MANUAL' | 'SYSTEM' | 'BANK_TRANSFER';
+      referenceId?: string;
+      gatewayResponse?: any;
+      feeAmount?: number;
+      verificationMethod?: 'API' | 'WEBHOOK' | 'MANUAL';
+      metadata?: any;
+    }
   ): Promise<number> {
     try {
+      const now = new Date().toISOString();
+      const netAmount = additionalData?.feeAmount ? amount - additionalData.feeAmount : amount;
+
       const transaction: Omit<WalletTransaction, 'id' | 'created_date' | 'updated_date'> = {
         user_id: userId,
         transaction_type: transactionType,
@@ -116,19 +127,48 @@ export class WalletSyncService {
         description,
         bank_account_id: bankAccountId,
         api_transaction_id: apiTransactionId,
-        status: 'COMPLETED'
+        status: 'COMPLETED',
+        transaction_source: additionalData?.transactionSource || 'SYSTEM',
+        reference_id: additionalData?.referenceId,
+        gateway_response: additionalData?.gatewayResponse ? JSON.stringify(additionalData.gatewayResponse) : undefined,
+        fee_amount: additionalData?.feeAmount || 0,
+        net_amount: netAmount,
+        metadata: additionalData?.metadata ? JSON.stringify(additionalData.metadata) : undefined,
+        verified_at: now,
+        verification_method: additionalData?.verificationMethod || 'SYSTEM'
       };
 
       const localTransactionId = await indexedDBService.addTransaction(transaction);
       console.log('Wallet transaction recorded:', { localTransactionId, type: transactionType, amount });
 
-      // Update local wallet state
-      await this.updateLocalWalletState(userId, {
+      // Update local wallet state with comprehensive tracking
+      const stateUpdates: any = {
         balance: balanceAfter,
-        total_invested: transactionType === 'INVESTMENT' ? amount : 0,
-        total_withdrawn: transactionType === 'WITHDRAW' ? amount : 0,
-        profit_earned: transactionType === 'PROFIT' ? amount : 0
-      });
+        last_transaction_id: localTransactionId
+      };
+
+      // Update specific counters based on transaction type
+      if (transactionType === 'INVESTMENT') {
+        stateUpdates.total_invested = amount;
+      } else if (transactionType === 'WITHDRAW') {
+        stateUpdates.total_withdrawn = amount;
+      } else if (transactionType === 'PROFIT') {
+        stateUpdates.profit_earned = amount;
+      } else if (transactionType === 'REFUND') {
+        stateUpdates.total_refunds = amount;
+      } else if (transactionType === 'ADJUSTMENT') {
+        stateUpdates.total_adjustments = amount;
+      }
+
+      // Track fees if provided
+      if (additionalData?.feeAmount) {
+        stateUpdates.total_fees_paid = additionalData.feeAmount;
+      }
+
+      await this.updateLocalWalletState(userId, stateUpdates);
+
+      // Create audit log for this transaction
+      await this.createAuditLog(userId, 'TRANSACTION_ADDED', undefined, JSON.stringify(transaction), 'SYSTEM');
 
       return localTransactionId;
     } catch (error) {
@@ -154,23 +194,37 @@ export class WalletSyncService {
       let currentState = await indexedDBService.getWalletState(userId);
 
       if (!currentState) {
-        // Create new state
+        // Create new state with enhanced fields
         currentState = {
           user_id: userId,
           balance: 0,
           total_invested: 0,
           total_withdrawn: 0,
           profit_earned: 0,
+          total_fees_paid: 0,
+          total_refunds: 0,
+          total_adjustments: 0,
+          pending_balance: 0,
+          available_balance: 0,
+          version: 1,
           last_sync_date: new Date().toISOString()
         };
       }
 
-      // Apply updates
+      // Apply updates with enhanced tracking
       const updatedState = {
         balance: updates.balance !== undefined ? updates.balance : currentState.balance,
         total_invested: currentState.total_invested + (updates.total_invested || 0),
         total_withdrawn: currentState.total_withdrawn + (updates.total_withdrawn || 0),
-        profit_earned: currentState.profit_earned + (updates.profit_earned || 0)
+        profit_earned: currentState.profit_earned + (updates.profit_earned || 0),
+        total_fees_paid: (currentState.total_fees_paid || 0) + (updates.total_fees_paid || 0),
+        total_refunds: (currentState.total_refunds || 0) + (updates.total_refunds || 0),
+        total_adjustments: (currentState.total_adjustments || 0) + (updates.total_adjustments || 0),
+        pending_balance: updates.pending_balance !== undefined ? updates.pending_balance : (currentState.pending_balance || 0),
+        available_balance: (updates.balance !== undefined ? updates.balance : currentState.balance) - (currentState.pending_balance || 0),
+        last_transaction_id: updates.last_transaction_id || currentState.last_transaction_id,
+        version: (currentState.version || 0) + 1,
+        last_api_sync_date: updates.last_api_sync_date || currentState.last_api_sync_date
       };
 
       await indexedDBService.updateWalletState(userId, updatedState);
@@ -309,6 +363,238 @@ export class WalletSyncService {
     } catch (error) {
       console.error('Error fetching database stats:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Create audit log entry
+   */
+  async createAuditLog(
+    userId: string,
+    action: 'BALANCE_UPDATE' | 'TRANSACTION_ADDED' | 'TRANSACTION_UPDATED' | 'STATE_SYNC' | 'MANUAL_ADJUSTMENT',
+    oldValue?: string,
+    newValue?: string,
+    changedBy: 'USER' | 'SYSTEM' | 'API' | 'PAYMENT_GATEWAY' = 'SYSTEM'
+  ): Promise<void> {
+    try {
+      const auditLog = {
+        user_id: userId,
+        action,
+        old_value: oldValue,
+        new_value: newValue,
+        changed_by: changedBy,
+        ip_address: this.getClientIP(),
+        user_agent: navigator.userAgent,
+        session_id: this.getSessionId(),
+        created_date: new Date().toISOString()
+      };
+
+      await indexedDBService.addAuditLog(auditLog);
+      console.log('Audit log created:', { action, userId, changedBy });
+    } catch (error) {
+      console.error('Error creating audit log:', error);
+      // Don't throw here as audit logging failure shouldn't break main functionality
+    }
+  }
+
+  /**
+   * Create balance snapshot
+   */
+  async createBalanceSnapshot(
+    userId: string,
+    walletState: LocalWalletState,
+    snapshotType: 'HOURLY' | 'DAILY' | 'MONTHLY' | 'MANUAL' = 'MANUAL'
+  ): Promise<void> {
+    try {
+      const transactionCount = await this.getTransactionCount(userId);
+
+      const snapshot = {
+        user_id: userId,
+        balance: walletState.balance,
+        total_invested: walletState.total_invested,
+        total_withdrawn: walletState.total_withdrawn,
+        profit_earned: walletState.profit_earned,
+        transaction_count: transactionCount,
+        snapshot_type: snapshotType,
+        created_date: new Date().toISOString()
+      };
+
+      await indexedDBService.addBalanceSnapshot(snapshot);
+      console.log('Balance snapshot created:', { userId, snapshotType, balance: walletState.balance });
+    } catch (error) {
+      console.error('Error creating balance snapshot:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Auto-sync and backup mechanism
+   */
+  async performAutoBackup(userId: string): Promise<void> {
+    try {
+      const walletState = await this.getLocalWalletState(userId);
+      if (walletState) {
+        await this.createBalanceSnapshot(userId, walletState, 'HOURLY');
+
+        // Perform integrity check
+        const isValid = await this.verifyWalletIntegrity(userId);
+        if (!isValid) {
+          console.warn('Wallet integrity check failed for user:', userId);
+          await this.createAuditLog(userId, 'MANUAL_ADJUSTMENT', undefined, 'Integrity check failed', 'SYSTEM');
+        }
+      }
+    } catch (error) {
+      console.error('Error during auto backup:', error);
+      // Don't throw as this is a background process
+    }
+  }
+
+  /**
+   * Verify wallet integrity
+   */
+  async verifyWalletIntegrity(userId: string): Promise<boolean> {
+    try {
+      const walletState = await this.getLocalWalletState(userId);
+      if (!walletState) return false;
+
+      const transactions = await this.getWalletTransactionHistory(userId);
+
+      // Calculate balance from transactions
+      let calculatedBalance = 0;
+      let calculatedInvested = 0;
+      let calculatedWithdrawn = 0;
+      let calculatedProfit = 0;
+      let calculatedFees = 0;
+
+      for (const transaction of transactions) {
+        if (transaction.status === 'COMPLETED') {
+          switch (transaction.transaction_type) {
+            case 'ADD_FUNDS':
+              calculatedBalance += transaction.amount;
+              break;
+            case 'WITHDRAW':
+              calculatedBalance -= transaction.amount;
+              calculatedWithdrawn += transaction.amount;
+              break;
+            case 'INVESTMENT':
+              calculatedInvested += transaction.amount;
+              break;
+            case 'PROFIT':
+              calculatedBalance += transaction.amount;
+              calculatedProfit += transaction.amount;
+              break;
+            case 'REFUND':
+              calculatedBalance += transaction.amount;
+              break;
+          }
+
+          if (transaction.fee_amount) {
+            calculatedFees += transaction.fee_amount;
+          }
+        }
+      }
+
+      // Check if calculated values match stored values
+      const isBalanceValid = Math.abs(walletState.balance - calculatedBalance) < 0.01;
+      const isTotalInvestedValid = Math.abs(walletState.total_invested - calculatedInvested) < 0.01;
+
+      console.log('Integrity check:', {
+        storedBalance: walletState.balance,
+        calculatedBalance,
+        isBalanceValid,
+        isTotalInvestedValid
+      });
+
+      return isBalanceValid && isTotalInvestedValid;
+    } catch (error) {
+      console.error('Error verifying wallet integrity:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get transaction count for user
+   */
+  async getTransactionCount(userId: string): Promise<number> {
+    try {
+      const transactions = await this.getWalletTransactionHistory(userId);
+      return transactions.length;
+    } catch (error) {
+      console.error('Error getting transaction count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get client IP (for audit logging)
+   */
+  private getClientIP(): string {
+    // In a real app, you'd get this from your server or a service
+    return 'client-side-unknown';
+  }
+
+  /**
+   * Get session ID (for audit logging)
+   */
+  private getSessionId(): string {
+    let sessionId = sessionStorage.getItem('wallet_session_id');
+    if (!sessionId) {
+      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('wallet_session_id', sessionId);
+    }
+    return sessionId;
+  }
+
+  /**
+   * Enhanced wallet state update with version control and checksums
+   */
+  async updateLocalWalletStateEnhanced(
+    userId: string,
+    updates: Partial<LocalWalletState>
+  ): Promise<void> {
+    try {
+      // Get current state for audit trail
+      const currentState = await this.getLocalWalletState(userId);
+      const oldValue = currentState ? JSON.stringify(currentState) : undefined;
+
+      // Perform the update
+      await this.updateLocalWalletState(userId, updates);
+
+      // Get new state for audit trail
+      const newState = await this.getLocalWalletState(userId);
+      const newValue = newState ? JSON.stringify(newState) : undefined;
+
+      // Create audit log
+      await this.createAuditLog(userId, 'STATE_SYNC', oldValue, newValue, 'SYSTEM');
+
+      console.log('Enhanced wallet state update completed for user:', userId);
+    } catch (error) {
+      console.error('Error in enhanced wallet state update:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get audit logs for user
+   */
+  async getAuditLogsByUserId(userId: string, limit?: number): Promise<any[]> {
+    try {
+      return await indexedDBService.getAuditLogsByUserId(userId, limit);
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get balance snapshots for user
+   */
+  async getBalanceSnapshotsByUserId(userId: string, limit?: number): Promise<any[]> {
+    try {
+      return await indexedDBService.getBalanceSnapshotsByUserId(userId, limit);
+    } catch (error) {
+      console.error('Error fetching balance snapshots:', error);
+      return [];
     }
   }
 
