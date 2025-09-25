@@ -1,0 +1,12 @@
+# Netlify redirects file for SPA routing
+# This tells Netlify to serve index.html for all routes that don't match static files
+# so React Router can handle client-side routing
+
+# Redirect all routes to index.html with a 200 status code (SPA fallback)
+/*    /index.html   200
+
+# Optional: Redirect HTTP to HTTPS (if you want to enforce HTTPS)
+# http://ip.rollingradius.com/*    https://ip.rollingradius.com/:splat  301!
+
+# Optional: API proxies (if you need to proxy API calls to avoid CORS)
+# /api/*  https://35.244.19.78:8042/:splat  200
