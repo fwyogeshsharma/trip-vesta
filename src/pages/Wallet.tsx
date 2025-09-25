@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+
+// API configuration
+const API_BASE_URL = 'https://35.244.19.78:8042';
 import {
   Wallet as WalletIcon,
   CreditCard,
@@ -19,22 +22,27 @@ import {
   Edit,
   X,
   Loader2,
-  Flag
+  Flag,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthToken } from "@/services/authService";
+import { walletSyncService } from "@/services/walletSyncService";
+import { useBackgroundSync } from "@/hooks/useBackgroundSync";
+import DatabaseViewer from "@/components/DatabaseViewer";
+import FinancialTransactionsTable from "@/components/FinancialTransactionsTable";
 
 // Razorpay integration removed - users directed to production for payments
 
 const Wallet = () => {
   const { toast } = useToast();
-  const { walletData, addToBalance, withdrawFromBalance } = useWallet();
+  const { walletData, addToBalance, withdrawFromBalance, loadFromDatabase, isLoading } = useWallet();
   const { user } = useAuth();
+  const { syncStatus, isManualSyncing, triggerManualSync } = useBackgroundSync();
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Form states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -42,49 +50,6 @@ const Wallet = () => {
   const [editingAccount, setEditingAccount] = useState<number | null>(null);
   const [investmentPermission, setInvestmentPermission] = useState(true);
 
-  // Payment request API configuration
-  const API_BASE_URL = 'https://35.244.19.78:8042';
-
-  // Create payment request function similar to Angular implementation
-  const createPaymentRequest = async (paymentData: {
-    amount: number;
-    mode_of_payment: string;
-    order_note: string;
-    product_or_service?: string;
-    paying_user?: string;
-    receiving_user?: string;
-    paying_company?: string;
-    delivery_address?: string;
-    gps_device?: string;
-    state_id?: string;
-    discount_offered?: number;
-  }) => {
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${API_BASE_URL}/payment_request`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(paymentData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('Payment request failed:', error);
-      throw error;
-    }
-  };
 
   // Add account form
   const [newAccountData, setNewAccountData] = useState({
@@ -206,6 +171,17 @@ const Wallet = () => {
 
       setBankAccounts(transformedAccounts);
 
+      // Sync all accounts to local database in background
+      if (transformedAccounts.length > 0) {
+        try {
+          await walletSyncService.syncAllBankAccountsToLocal(result._items || []);
+          console.log('All bank accounts synced to local database');
+        } catch (syncError) {
+          console.error('Error syncing bank accounts to local database:', syncError);
+          // Continue even if local sync fails
+        }
+      }
+
       // If no accounts are active and we have accounts, set the first one as active
       if (transformedAccounts.length > 0 && !transformedAccounts.some((acc: any) => acc.active)) {
         const updatedAccounts = transformedAccounts.map((acc: any, index: number) => ({
@@ -231,26 +207,192 @@ const Wallet = () => {
   useEffect(() => {
     if (user) {
       fetchBankAccounts();
+
+      // Sync current wallet data to local database
+      const syncWalletData = async () => {
+        try {
+          await walletSyncService.syncWalletDataToLocal(user.id || user._id || 'current_user', {
+            balance: walletData.balance,
+            totalInvested: walletData.totalInvested,
+            totalWithdrawn: walletData.totalWithdrawn,
+            profitEarned: walletData.profitEarned
+          });
+        } catch (error) {
+          console.error('Error syncing wallet data on mount:', error);
+        }
+      };
+
+      syncWalletData();
     }
-  }, [user]);
+  }, [user, walletData]);
+
+  // Handle payment return from payment gateway
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    const orderId = urlParams.get('order_id');
+    const transactionId = urlParams.get('transaction_id');
+    const amount = urlParams.get('amount');
+    const status = urlParams.get('status');
+
+    // Handle various return URL formats from payment gateway
+    if ((paymentStatus === 'success' || status === 'success' || status === 'SUCCESS') && (orderId || transactionId)) {
+      handlePaymentReturn(orderId || transactionId || '', {
+        amount: amount ? parseFloat(amount) : undefined,
+        status: status || paymentStatus,
+        transactionId: transactionId
+      });
+    } else if (orderId || transactionId) {
+      // Check if we have a pending payment even without explicit success parameter
+      const pendingPaymentStr = localStorage.getItem('pendingPayment');
+      if (pendingPaymentStr) {
+        handlePaymentReturn(orderId || transactionId || '', {
+          amount: amount ? parseFloat(amount) : undefined,
+          status: status || 'unknown',
+          transactionId: transactionId
+        });
+      }
+    }
+  }, []);
+
+  // Handle payment return from payment gateway
+  const handlePaymentReturn = async (
+    orderId: string,
+    paymentDetails?: {
+      amount?: number;
+      status?: string;
+      transactionId?: string;
+    }
+  ) => {
+    console.log('Processing payment return:', { orderId, paymentDetails });
+
+    try {
+      const pendingPaymentStr = localStorage.getItem('pendingPayment');
+      let pendingPayment = null;
+
+      if (pendingPaymentStr) {
+        pendingPayment = JSON.parse(pendingPaymentStr);
+      }
+
+      console.log('Pending payment:', pendingPayment);
+
+      const userId = user?.id || user?._id || 'current_user';
+      const currentBalance = walletData.balance;
+
+      // Determine amount - use from URL params, pending payment, or prompt user
+      let amount = paymentDetails?.amount || (pendingPayment?.amount);
+
+      if (!amount) {
+        console.warn('No amount found in payment return, this might indicate an issue');
+        // You might want to call your API to verify the payment amount
+        return;
+      }
+
+      // Determine if payment was successful
+      const isSuccessful = paymentDetails?.status?.toLowerCase() === 'success' ||
+                          paymentDetails?.status?.toLowerCase() === 'completed' ||
+                          !paymentDetails?.status; // Default to success if no status provided
+
+      if (isSuccessful) {
+        // Add funds to wallet
+        addToBalance(amount);
+
+        // Record successful transaction with proper transaction ID
+        const transactionId = paymentDetails?.transactionId ||
+                             pendingPayment?.paymentId ||
+                             pendingPayment?.orderId ||
+                             orderId;
+
+        await walletSyncService.recordWalletTransaction(
+          userId,
+          'ADD_FUNDS',
+          amount,
+          currentBalance,
+          currentBalance + amount,
+          `Funds added successfully via payment gateway - ₹${amount}`,
+          undefined, // No specific bank account for online payments
+          transactionId
+        );
+
+        // Reload wallet data from database to show updated balance
+        await loadFromDatabase();
+
+        toast({
+          title: "Payment Successful!",
+          description: `₹${amount.toLocaleString()} has been added to your wallet`,
+        });
+
+        console.log('Payment processed successfully:', {
+          orderId,
+          amount,
+          transactionId,
+          newBalance: currentBalance + amount
+        });
+      } else {
+        toast({
+          title: "Payment Failed",
+          description: `Payment was not successful. Status: ${paymentDetails?.status || 'Unknown'}`,
+          variant: "destructive"
+        });
+      }
+
+      // Clear pending payment
+      localStorage.removeItem('pendingPayment');
+
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+    } catch (error) {
+      console.error('Error handling payment return:', error);
+
+      toast({
+        title: "Payment Processing Error",
+        description: "There was an issue processing your payment. Please check your wallet balance or contact support.",
+        variant: "destructive"
+      });
+
+      // Clear pending payment even on error
+      localStorage.removeItem('pendingPayment');
+
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  };
 
   // Removed Razorpay script loading - directing users to production
 
-  const handleSetActiveAccount = (accountId: number) => {
-    setBankAccounts(prev =>
-      prev.map(account => ({
-        ...account,
-        active: account.id === accountId
-      }))
-    );
+  const handleSetActiveAccount = async (accountId: number) => {
+    try {
+      const userId = user?.id || user?._id || 'current_user';
 
-    const selectedAccount = bankAccounts.find(acc => acc.id === accountId);
-    toast({
-      title: "Active Account Changed",
-      description: `${selectedAccount?.bank} is now your active account for transactions`,
-    });
+      // Update in local database
+      await walletSyncService.setActiveAccount(accountId, userId);
+
+      // Update local state
+      setBankAccounts(prev =>
+        prev.map(account => ({
+          ...account,
+          active: account.id === accountId
+        }))
+      );
+
+      const selectedAccount = bankAccounts.find(acc => acc.id === accountId);
+      toast({
+        title: "Active Account Changed",
+        description: `${selectedAccount?.bank} is now your active account for transactions`,
+      });
+    } catch (error) {
+      console.error('Error setting active account:', error);
+      toast({
+        title: "Error",
+        description: "Failed to set active account. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
+
+  // Payment request handler
   const handleAddFunds = async () => {
     if (!addAmount || parseFloat(addAmount) <= 0) {
       toast({
@@ -261,19 +403,6 @@ const Wallet = () => {
       return;
     }
 
-    const amountToAdd = parseFloat(addAmount);
-
-    // Validate minimum amount (₹1)
-    if (amountToAdd < 1) {
-      toast({
-        title: "Minimum Amount Required",
-        description: "Minimum amount to add is ₹1",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check if user is logged in
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -283,60 +412,79 @@ const Wallet = () => {
       return;
     }
 
-    setIsProcessingPayment(true);
-
     try {
-      // Create payment request similar to Angular implementation
-      const paymentRequestData = {
-        amount: amountToAdd,
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const payload = {
+        amount: parseFloat(addAmount),
         mode_of_payment: "Online",
-        order_note: "Rolling Radius Services",
-        product_or_service: "61422c0a1778a2a004068c63", // Required field for wallet top-up
-        paying_user: user.id || user._id,
-        receiving_user: "6257f1d75b42235a2ae4ab34",
-        discount_offered: 0
+        order_note: "Lender Investment",
+        paying_user: "6257f1d75b42235a2ae4ab34",
+        product_or_service: "61422c0a1778a2a004068c63",
+        receiving_user: "6257f1d75b42235a2ae4ab34"
       };
 
-      console.log("Creating payment request:", paymentRequestData);
+      console.log('Creating payment request with payload:', payload);
 
-      const result = await createPaymentRequest(paymentRequestData);
+      const response = await fetch(`${API_BASE_URL}/payment_request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
 
-      console.log("Payment request result:", result);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Payment API error (${response.status}):`, errorText);
+        throw new Error(`Payment API error: ${response.status} - ${errorText}`);
+      }
 
-      // Check if payment link is available and redirect
-      if (result?.data?.payment_link) {
+      const result = await response.json();
+      console.log('Payment request result:', result);
+      console.log('Full response structure:', JSON.stringify(result, null, 2));
+
+      // Check for payment link in response and redirect to Cashfree
+      const paymentLink = result.payment_link ||
+                         result.data?.payment_link ||
+                         result.paymentLink ||
+                         result.data?.paymentLink ||
+                         result.payment_url ||
+                         result.data?.payment_url;
+
+      if (paymentLink) {
         toast({
           title: "Redirecting to Payment",
           description: "You will be redirected to complete the payment",
         });
 
-        // Redirect to payment gateway
-        window.location.href = result.data.payment_link;
+        // Redirect to Cashfree payment gateway
+        setTimeout(() => {
+          window.location.href = paymentLink;
+        }, 1000);
       } else {
-        // If no payment link, show success message (for development/testing)
+        console.warn('No payment link found in response:', result);
         toast({
           title: "Payment Request Created",
-          description: `Payment request for ₹${amountToAdd.toLocaleString()} has been created successfully`,
+          description: "Payment request created successfully",
         });
-
-        setAddAmount("");
       }
-    } catch (error: any) {
-      console.error("Payment request failed:", error);
 
+    } catch (error) {
+      console.error('Payment request failed:', error);
       toast({
-        title: "Payment Request Failed",
-        description: error.message || "Failed to create payment request. Please try again.",
+        title: "Payment Failed",
+        description: error instanceof Error ? error.message : 'Failed to create payment request',
         variant: "destructive"
       });
-    } finally {
-      setIsProcessingPayment(false);
     }
   };
 
-  // Removed payment success handler - users directed to production
-
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
       toast({
         title: "Invalid Amount",
@@ -347,10 +495,31 @@ const Wallet = () => {
     }
 
     const amountToWithdraw = parseFloat(withdrawAmount);
+    const currentBalance = walletData.balance;
+    const userId = user?.id || user?._id || 'current_user';
 
     const success = withdrawFromBalance(amountToWithdraw);
 
     if (success) {
+      // Record withdrawal transaction in local database
+      try {
+        const activeAccount = bankAccounts.find(acc => acc.active);
+        await walletSyncService.recordWalletTransaction(
+          userId,
+          'WITHDRAW',
+          amountToWithdraw,
+          currentBalance,
+          currentBalance - amountToWithdraw,
+          `Withdrawal to ${activeAccount?.bank || 'bank account'} - ₹${amountToWithdraw}`,
+          activeAccount?.id,
+          `withdraw_${Date.now()}`
+        );
+        console.log('Withdrawal transaction recorded');
+      } catch (dbError) {
+        console.error('Error recording withdrawal transaction to local database:', dbError);
+        // Continue even if local recording fails
+      }
+
       toast({
         title: "Withdrawal Processed",
         description: `₹${amountToWithdraw.toLocaleString()} has been withdrawn from your wallet`,
@@ -528,7 +697,16 @@ const Wallet = () => {
 
       const apiResult = await submitBankingDetails(accountIdentityId);
 
-      // Step 3: Refresh bank accounts from API to get the latest data
+      // Step 3: Sync the new account to local database
+      try {
+        await walletSyncService.syncBankAccountToLocal(apiResult);
+        console.log('Bank account synced to local database');
+      } catch (syncError) {
+        console.error('Error syncing bank account to local database:', syncError);
+        // Continue even if local sync fails
+      }
+
+      // Step 4: Refresh bank accounts from API to get the latest data
       await fetchBankAccounts();
 
       // Reset form
@@ -613,9 +791,31 @@ const Wallet = () => {
     <div className="flex-1 space-y-6 p-6 bg-background text-foreground">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">{user?.name || "User"}'s Wallet</h1>
-        <div className="flex items-center space-x-2">
-          <Shield className="h-4 w-4 text-success" />
-          <span className="text-sm text-muted-foreground">Secure</span>
+        <div className="flex items-center space-x-4">
+          {/* Sync Status and Manual Sync Button */}
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
+              <div className={`h-2 w-2 rounded-full ${syncStatus.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+              <span className="text-xs text-muted-foreground">
+                {syncStatus.isActive ? 'Auto-sync ON' : 'Auto-sync OFF'}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={triggerManualSync}
+              disabled={isManualSyncing || !syncStatus.canManualSync}
+              className="h-8"
+            >
+              <RefreshCw className={`h-3 w-3 mr-1 ${isManualSyncing ? 'animate-spin' : ''}`} />
+              {isManualSyncing ? 'Syncing...' : 'Sync'}
+            </Button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Shield className="h-4 w-4 text-success" />
+            <span className="text-sm text-muted-foreground">Secure</span>
+          </div>
         </div>
       </div>
 
@@ -629,7 +829,7 @@ const Wallet = () => {
           <CardContent>
             <div className="text-2xl font-bold">₹{walletData.balance.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Unused amount will be credited to your account in monthly cycle
+              Real-time balance from local database
             </p>
           </CardContent>
         </Card>
@@ -669,6 +869,8 @@ const Wallet = () => {
         <TabsList>
           <TabsTrigger value="manage">Manage Funds</TabsTrigger>
           <TabsTrigger value="accounts">Bank Accounts</TabsTrigger>
+          <TabsTrigger value="transactions">Financial Transactions</TabsTrigger>
+          <TabsTrigger value="database">Local Database</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manage" className="space-y-4">
@@ -730,17 +932,12 @@ const Wallet = () => {
                 <Button
                   onClick={handleAddFunds}
                   className="w-full"
-                  disabled={isProcessingPayment}
                 >
-                  {isProcessingPayment ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing Payment...
-                    </>
-                  ) : (
-                    "Add Funds"
-                  )}
+                  Add Funds
                 </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Secure payment powered by your payment gateway
+                </p>
               </CardContent>
             </Card>
 
@@ -876,6 +1073,17 @@ const Wallet = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="transactions" className="space-y-4">
+          <FinancialTransactionsTable
+            userId={user?.id || user?._id}
+            companyId="62d66794e54f47829a886a1d"
+          />
+        </TabsContent>
+
+        <TabsContent value="database" className="space-y-4">
+          <DatabaseViewer />
         </TabsContent>
       </Tabs>
 
