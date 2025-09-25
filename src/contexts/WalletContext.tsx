@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import walletDatabaseService, { WalletRecord, TransactionRecord } from '@/services/walletDatabaseService';
+import walletSyncService, { WalletSyncResult } from '@/services/walletSyncService';
 
 export interface WalletData {
   balance: number;
@@ -18,6 +19,7 @@ interface WalletContextType {
   withdrawFromBalance: (amount: number, description?: string) => Promise<boolean>;
   refreshWalletData: () => Promise<void>;
   refreshTransactions: () => Promise<void>;
+  syncWalletFromFinancialTransactions: (companyId?: string) => Promise<WalletSyncResult>;
   clearAllData: () => Promise<void>;
   exportData: () => Promise<{ wallet: WalletRecord[], transactions: TransactionRecord[] }>;
   isLoading: boolean;
@@ -188,6 +190,31 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  const syncWalletFromFinancialTransactions = async (companyId = "62d66794e54f47829a886a1d") => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    setIsLoading(true);
+    try {
+      const userId = user.id || user._id || 'default_user';
+      const result = await walletSyncService.syncWalletFromFinancialTransactions(userId, companyId);
+
+      if (result.success) {
+        // Refresh wallet data to show updated balance
+        await refreshWalletData();
+        await refreshTransactions();
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error syncing wallet from financial transactions:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const value: WalletContextType = {
     walletData,
@@ -198,6 +225,7 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     withdrawFromBalance,
     refreshWalletData,
     refreshTransactions,
+    syncWalletFromFinancialTransactions,
     clearAllData,
     exportData,
     isLoading

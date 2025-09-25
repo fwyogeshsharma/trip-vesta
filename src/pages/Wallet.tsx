@@ -73,10 +73,11 @@ const verifyPaymentWithBackend = async (orderId: string) => {
 
 const Wallet = () => {
   const { toast } = useToast();
-  const { walletData, addToBalance, withdrawFromBalance, isLoading } = useWallet();
+  const { walletData, addToBalance, withdrawFromBalance, syncWalletFromFinancialTransactions, isLoading } = useWallet();
   const { user } = useAuth();
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [currentTab, setCurrentTab] = useState("manage");
 
   // Form states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -304,6 +305,34 @@ const Wallet = () => {
       }
     }
   }, []);
+
+  // Auto-sync wallet when Financial Transactions tab is viewed
+  useEffect(() => {
+    if (currentTab === 'transactions' && user) {
+      const performAutoSync = async () => {
+        try {
+          console.log('🔄 Auto-syncing wallet from financial transactions...');
+          const result = await syncWalletFromFinancialTransactions("62d66794e54f47829a886a1d");
+
+          if (result.success) {
+            console.log('✅ Auto-sync completed:', {
+              totalAmount: `₹${result.totalAmount.toLocaleString()}`,
+              totalInvested: `₹${result.totalInvested.toLocaleString()}`,
+              transactionsProcessed: result.transactionsProcessed
+            });
+          } else {
+            console.warn('⚠️ Auto-sync failed:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ Auto-sync error:', error);
+        }
+      };
+
+      // Add small delay to avoid immediate sync on tab switch
+      const timeoutId = setTimeout(performAutoSync, 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentTab, user, syncWalletFromFinancialTransactions]);
 
   // Handle payment return from payment gateway
   const handlePaymentReturn = async (
@@ -939,7 +968,7 @@ const Wallet = () => {
 
 
 
-      <Tabs defaultValue="manage" className="space-y-4">
+      <Tabs defaultValue="manage" value={currentTab} onValueChange={setCurrentTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="manage">Manage Funds</TabsTrigger>
           <TabsTrigger value="accounts">Bank Accounts</TabsTrigger>
@@ -1171,10 +1200,37 @@ const Wallet = () => {
 
 
         <TabsContent value="transactions" className="space-y-4">
-          <FinancialTransactionsTable
-            userId={user?.id || user?._id}
-            companyId="62d66794e54f47829a886a1d"
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Financial Transactions
+              </CardTitle>
+              <CardDescription>
+                All financial transactions automatically sync with your wallet balance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-green-800 mb-1">Auto-Sync Active 🔄</h4>
+                    <p className="text-sm text-green-700 mb-1">
+                      Your wallet balance automatically updates based on financial transactions.
+                    </p>
+                    <p className="text-xs text-green-600">
+                      💰 Balance = Sum of all transaction amounts | 💹 Total Invested = Sum from transaction notes
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <FinancialTransactionsTable
+                userId={user?.id || user?._id}
+                companyId="62d66794e54f47829a886a1d"
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
       </Tabs>

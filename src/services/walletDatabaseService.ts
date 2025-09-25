@@ -166,6 +166,30 @@ class WalletDatabaseService {
     this.saveToLocalStorage();
   }
 
+  async updateWalletInvestment(userId: string, totalInvested: number): Promise<void> {
+    await this.initializeDatabase();
+    if (!this.db) throw new Error('Database not initialized');
+
+    const now = new Date().toISOString();
+    const stmt = this.db.prepare('UPDATE wallet SET total_invested = ?, updated_at = ? WHERE user_id = ?');
+    stmt.run([totalInvested, now, userId]);
+    stmt.free();
+
+    this.saveToLocalStorage();
+  }
+
+  async updateWalletBalanceAndInvestment(userId: string, newBalance: number, totalInvested: number): Promise<void> {
+    await this.initializeDatabase();
+    if (!this.db) throw new Error('Database not initialized');
+
+    const now = new Date().toISOString();
+    const stmt = this.db.prepare('UPDATE wallet SET balance = ?, total_invested = ?, updated_at = ? WHERE user_id = ?');
+    stmt.run([newBalance, totalInvested, now, userId]);
+    stmt.free();
+
+    this.saveToLocalStorage();
+  }
+
   async addTransaction(transaction: Omit<TransactionRecord, 'id' | 'created_at'>): Promise<number> {
     await this.initializeDatabase();
     if (!this.db) throw new Error('Database not initialized');
