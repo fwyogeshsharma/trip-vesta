@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { walletSyncService } from '@/services/walletSyncService';
-import { financialTransactionsService } from '@/services/financialTransactionsService';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import walletDatabaseService, { WalletRecord, TransactionRecord } from '@/services/walletDatabaseService';
 
 export interface WalletData {
   balance: number;
@@ -12,16 +11,16 @@ export interface WalletData {
 
 interface WalletContextType {
   walletData: WalletData;
+  transactions: TransactionRecord[];
   updateBalance: (newBalance: number) => void;
   deductFromBalance: (amount: number) => boolean;
-  addToBalance: (amount: number) => void;
-  withdrawFromBalance: (amount: number) => boolean;
-  syncToDatabase: (userId: string) => Promise<void>;
-  loadFromDatabase: () => Promise<void>;
-  syncFinancialTransactions: () => Promise<void>;
-  loadBalanceFromTransactions: () => Promise<number>;
+  addToBalance: (amount: number, description?: string, transactionId?: string) => Promise<void>;
+  withdrawFromBalance: (amount: number, description?: string) => Promise<boolean>;
+  refreshWalletData: () => Promise<void>;
+  refreshTransactions: () => Promise<void>;
+  clearAllData: () => Promise<void>;
+  exportData: () => Promise<{ wallet: WalletRecord[], transactions: TransactionRecord[] }>;
   isLoading: boolean;
-  isTransactionSyncing: boolean;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -37,45 +36,63 @@ const defaultWalletData: WalletData = {
 
 export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [walletData, setWalletData] = useState<WalletData>(defaultWalletData);
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isTransactionSyncing, setIsTransactionSyncing] = useState(false);
   const { user } = useAuth();
 
-  // Load wallet data from local database on mount
-  useEffect(() => {
-    const loadInitialData = async () => {
-      if (user) {
-        await loadFromDatabase();
-      } else {
-        // Fallback to localStorage for non-authenticated users
-        try {
-          const stored = localStorage.getItem(WALLET_STORAGE_KEY);
-          if (stored) {
-            const parsedData = JSON.parse(stored);
-            setWalletData(parsedData);
-          }
-        } catch (error) {
-          console.error('Error loading wallet data from localStorage:', error);
-        }
-      }
-    };
+  const refreshWalletData = useCallback(async () => {
+    if (!user) {
+      setWalletData(defaultWalletData);
+      return;
+    }
 
-    loadInitialData();
+    setIsLoading(true);
+    try {
+      const userId = user.id || user._id || 'default_user';
+      const wallet = await walletDatabaseService.getOrCreateWallet(userId);
+
+      setWalletData({
+        balance: wallet.balance || 0,
+        totalInvested: wallet.total_invested || 0,
+        totalWithdrawn: wallet.total_withdrawn || 0,
+        profitEarned: wallet.profit_earned || 0
+      });
+    } catch (error) {
+      console.error('Error loading wallet data from database:', error);
+      // Set default data on error to prevent undefined values
+      setWalletData(defaultWalletData);
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
 
-  // Save wallet data to localStorage and sync to database
-  const saveWalletData = async (data: WalletData, userId?: string) => {
-    try {
-      localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(data));
-      setWalletData(data);
-
-      // Sync to local database if userId is provided
-      if (userId) {
-        await walletSyncService.syncWalletDataToLocal(userId, data);
-      }
-    } catch (error) {
-      console.error('Error saving wallet data:', error);
+  const refreshTransactions = useCallback(async () => {
+    if (!user) {
+      setTransactions([]);
+      return;
     }
+
+    try {
+      const userId = user.id || user._id || 'default_user';
+      const transactionHistory = await walletDatabaseService.getTransactionHistory(userId, 100);
+      setTransactions(transactionHistory || []);
+    } catch (error) {
+      console.error('Error loading transaction history:', error);
+      setTransactions([]);
+    }
+  }, [user]);
+
+  // Load wallet data from SQLite database on mount
+  useEffect(() => {
+    if (user) {
+      refreshWalletData();
+      refreshTransactions();
+    }
+  }, [user, refreshWalletData, refreshTransactions]);
+
+  // Save wallet data to database
+  const saveWalletData = (data: WalletData) => {
+    setWalletData(data);
   };
 
   const updateBalance = (newBalance: number) => {
@@ -96,153 +113,94 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     return false;
   };
 
-  const addToBalance = (amount: number) => {
-    const updatedData = {
-      ...walletData,
-      balance: walletData.balance + amount
-    };
-    saveWalletData(updatedData);
-  };
-
-  const withdrawFromBalance = (amount: number): boolean => {
-    if (walletData.balance >= amount) {
-      const updatedData = {
-        ...walletData,
-        balance: walletData.balance - amount,
-        totalWithdrawn: walletData.totalWithdrawn + amount
-      };
-      saveWalletData(updatedData);
-      return true;
-    }
-    return false;
-  };
-
-  // Load wallet data from database
-  const loadFromDatabase = async () => {
+  const addToBalance = async (amount: number, description = 'Funds added to wallet', transactionId?: string) => {
     if (!user) return;
 
     setIsLoading(true);
     try {
-      const userId = user.id || user._id || 'current_user';
-      const localWalletState = await walletSyncService.getLocalWalletState(userId);
+      const userId = user.id || user._id || 'default_user';
+      const updatedWallet = await walletDatabaseService.addFunds(userId, amount, description, transactionId);
 
-      if (localWalletState) {
-        const dbWalletData: WalletData = {
-          balance: localWalletState.balance,
-          totalInvested: localWalletState.total_invested,
-          totalWithdrawn: localWalletState.total_withdrawn,
-          profitEarned: localWalletState.profit_earned
-        };
+      setWalletData({
+        balance: updatedWallet.balance,
+        totalInvested: updatedWallet.total_invested,
+        totalWithdrawn: updatedWallet.total_withdrawn,
+        profitEarned: updatedWallet.profit_earned
+      });
 
-        setWalletData(dbWalletData);
-        // Also save to localStorage as backup
-        localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(dbWalletData));
-        console.log('Wallet data loaded from database:', dbWalletData);
-      } else {
-        console.log('No wallet data found in database, using defaults');
-        // Initialize database with default data
-        await walletSyncService.syncWalletDataToLocal(userId, defaultWalletData);
-      }
+      // Refresh transactions to show the new transaction
+      await refreshTransactions();
     } catch (error) {
-      console.error('Error loading wallet data from database:', error);
-      // Fallback to localStorage
-      try {
-        const stored = localStorage.getItem(WALLET_STORAGE_KEY);
-        if (stored) {
-          const parsedData = JSON.parse(stored);
-          setWalletData(parsedData);
-        }
-      } catch (localStorageError) {
-        console.error('Error loading from localStorage:', localStorageError);
-      }
+      console.error('Error adding funds:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Sync current wallet data to database
-  const syncToDatabase = async (userId: string) => {
+  const withdrawFromBalance = async (amount: number, description = 'Funds withdrawn from wallet'): Promise<boolean> => {
+    if (!user) return false;
+
+    setIsLoading(true);
     try {
-      await walletSyncService.syncWalletDataToLocal(userId, walletData);
+      const userId = user.id || user._id || 'default_user';
+      const result = await walletDatabaseService.withdrawFunds(userId, amount, description);
+
+      if (result.success && result.wallet) {
+        setWalletData({
+          balance: result.wallet.balance,
+          totalInvested: result.wallet.total_invested,
+          totalWithdrawn: result.wallet.total_withdrawn,
+          profitEarned: result.wallet.profit_earned
+        });
+
+        // Refresh transactions to show the new transaction
+        await refreshTransactions();
+        return true;
+      }
+
+      return false;
     } catch (error) {
-      console.error('Error syncing wallet data to database:', error);
-      throw error;
-    }
-  };
-
-  // Sync financial transactions and calculate wallet balance
-  const syncFinancialTransactions = async () => {
-    if (!user) {
-      console.log('User not authenticated, skipping financial transaction sync');
-      return;
-    }
-
-    setIsTransactionSyncing(true);
-    try {
-      console.log('Starting financial transaction sync...');
-
-      // Sync all financial transactions
-      const syncResult = await financialTransactionsService.syncAllTransactionsToLocal();
-      console.log('Financial transactions synced:', syncResult);
-
-      // Update wallet balance based on transaction calculation
-      const calculatedBalance = syncResult.walletValue;
-
-      // Update wallet data with calculated balance
-      const updatedWalletData = {
-        ...walletData,
-        balance: calculatedBalance
-      };
-
-      setWalletData(updatedWalletData);
-      localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(updatedWalletData));
-
-      // Sync to local database
-      const userId = user.id || user._id || 'current_user';
-      await walletSyncService.syncWalletDataToLocal(userId, updatedWalletData);
-
-      console.log('Wallet balance updated from financial transactions:', calculatedBalance);
-
-    } catch (error) {
-      console.error('Error syncing financial transactions:', error);
-      throw error;
+      console.error('Error withdrawing funds:', error);
+      return false;
     } finally {
-      setIsTransactionSyncing(false);
+      setIsLoading(false);
     }
   };
 
-  // Load balance from financial transactions without syncing from API
-  const loadBalanceFromTransactions = async (): Promise<number> => {
+  const clearAllData = async () => {
     try {
-      const companyId = "62d66794e54f47829a886a1d"; // Default company ID
-      const userId = user?.id || user?._id;
-
-      const calculatedBalance = await financialTransactionsService.calculateWalletValueFromTransactions(
-        companyId,
-        userId
-      );
-
-      console.log('Calculated balance from local transactions:', calculatedBalance);
-      return calculatedBalance;
-
+      await walletDatabaseService.clearAllData();
+      setWalletData(defaultWalletData);
+      setTransactions([]);
     } catch (error) {
-      console.error('Error loading balance from transactions:', error);
-      return walletData.balance; // Fallback to current balance
+      console.error('Error clearing all data:', error);
+      throw error;
     }
   };
+
+  const exportData = async () => {
+    try {
+      return await walletDatabaseService.exportData();
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      throw error;
+    }
+  };
+
 
   const value: WalletContextType = {
     walletData,
+    transactions,
     updateBalance,
     deductFromBalance,
     addToBalance,
     withdrawFromBalance,
-    syncToDatabase,
-    loadFromDatabase,
-    syncFinancialTransactions,
-    loadBalanceFromTransactions,
-    isLoading,
-    isTransactionSyncing
+    refreshWalletData,
+    refreshTransactions,
+    clearAllData,
+    exportData,
+    isLoading
   };
 
   return (

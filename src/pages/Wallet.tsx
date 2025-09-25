@@ -28,13 +28,10 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
+import type { TransactionRecord } from "@/services/walletDatabaseService";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthToken } from "@/services/authService";
-import { walletSyncService } from "@/services/walletSyncService";
-import { useBackgroundSync } from "@/hooks/useBackgroundSync";
-import DatabaseViewer from "@/components/DatabaseViewer";
 import FinancialTransactionsTable from "@/components/FinancialTransactionsTable";
-import WalletTransactionsTable from "@/components/WalletTransactionsTable";
 
 // Razorpay integration removed - users directed to production for payments
 
@@ -76,9 +73,8 @@ const verifyPaymentWithBackend = async (orderId: string) => {
 
 const Wallet = () => {
   const { toast } = useToast();
-  const { walletData, addToBalance, withdrawFromBalance, loadFromDatabase, isLoading } = useWallet();
+  const { walletData, transactions, addToBalance, withdrawFromBalance, exportData, isLoading } = useWallet();
   const { user } = useAuth();
-  const { syncStatus, isManualSyncing, triggerManualSync } = useBackgroundSync();
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
 
@@ -209,16 +205,6 @@ const Wallet = () => {
 
       setBankAccounts(transformedAccounts);
 
-      // Sync all accounts to local database in background
-      if (transformedAccounts.length > 0) {
-        try {
-          await walletSyncService.syncAllBankAccountsToLocal(result._items || []);
-          console.log('All bank accounts synced to local database');
-        } catch (syncError) {
-          console.error('Error syncing bank accounts to local database:', syncError);
-          // Continue even if local sync fails
-        }
-      }
 
       // If no accounts are active and we have accounts, set the first one as active
       if (transformedAccounts.length > 0 && !transformedAccounts.some((acc: any) => acc.active)) {
@@ -246,21 +232,6 @@ const Wallet = () => {
     if (user) {
       fetchBankAccounts();
 
-      // Sync current wallet data to local database
-      const syncWalletData = async () => {
-        try {
-          await walletSyncService.syncWalletDataToLocal(user.id || user._id || 'current_user', {
-            balance: walletData.balance,
-            totalInvested: walletData.totalInvested,
-            totalWithdrawn: walletData.totalWithdrawn,
-            profitEarned: walletData.profitEarned
-          });
-        } catch (error) {
-          console.error('Error syncing wallet data on mount:', error);
-        }
-      };
-
-      syncWalletData();
     }
   }, [user, walletData]);
 
@@ -401,7 +372,7 @@ const Wallet = () => {
 
       if (isSuccessful) {
         // Add funds to wallet
-        addToBalance(amount);
+        await addToBalance(amount, `Payment successful - Order ${orderId}`, transactionId);
 
         // Record successful transaction with proper transaction ID
         const transactionId = paymentDetails?.transactionId ||
@@ -409,47 +380,7 @@ const Wallet = () => {
                              pendingPayment?.orderId ||
                              orderId;
 
-        await walletSyncService.recordWalletTransaction(
-          userId,
-          'ADD_FUNDS',
-          amount,
-          currentBalance,
-          currentBalance + amount,
-          `Funds added successfully via payment gateway - ₹${amount}`,
-          undefined, // No specific bank account for online payments
-          transactionId,
-          {
-            transactionSource: 'CASHFREE',
-            referenceId: orderId,
-            gatewayResponse: paymentDetails,
-            verificationMethod: 'API',
-            // Enhanced accounting fields
-            partyName: 'Cashfree Payments India Pvt Ltd',
-            partyType: 'PAYMENT_GATEWAY',
-            paymentMode: 'ONLINE',
-            customNote: `Wallet credit via Cashfree payment gateway - Order ID: ${orderId} - Amount: ₹${amount.toLocaleString()}`,
-            chartOfAccount: 'DIGITAL_WALLET_RECEIPTS',
-            voucherNumber: `CF-${orderId}-${Date.now()}`,
-            metadata: {
-              original_url: window.location.href,
-              payment_timestamp: new Date().toISOString(),
-              order_id: orderId,
-              user_agent: navigator.userAgent,
-              accounting_period: new Date().toISOString().split('T')[0],
-              transaction_category: 'WALLET_TOPUP'
-            }
-          }
-        );
 
-        // Reload wallet data from database to show updated balance
-        await loadFromDatabase();
-
-        // Create automatic backup snapshot after successful payment
-        try {
-          await walletSyncService.performAutoBackup(userId);
-        } catch (backupError) {
-          console.error('Auto backup failed, but payment was successful:', backupError);
-        }
 
         toast({
           title: "Payment Successful!",
@@ -507,8 +438,6 @@ const Wallet = () => {
     try {
       const userId = user?.id || user?._id || 'current_user';
 
-      // Update in local database
-      await walletSyncService.setActiveAccount(accountId, userId);
 
       // Update local state
       setBankAccounts(prev =>
@@ -647,60 +576,28 @@ const Wallet = () => {
     }
 
     const amountToWithdraw = parseFloat(withdrawAmount);
-    const currentBalance = walletData.balance;
-    const userId = user?.id || user?._id || 'current_user';
 
-    const success = withdrawFromBalance(amountToWithdraw);
+    try {
+      const success = await withdrawFromBalance(amountToWithdraw, `Withdrawal to bank account`);
 
-    if (success) {
-      // Record withdrawal transaction in local database
-      try {
-        const activeAccount = bankAccounts.find(acc => acc.active);
-        await walletSyncService.recordWalletTransaction(
-          userId,
-          'WITHDRAW',
-          amountToWithdraw,
-          currentBalance,
-          currentBalance - amountToWithdraw,
-          `Withdrawal to ${activeAccount?.bank || 'bank account'} - ₹${amountToWithdraw}`,
-          activeAccount?.id,
-          `withdraw_${Date.now()}`,
-          {
-            transactionSource: 'BANK_TRANSFER',
-            referenceId: `WD${Date.now()}`,
-            verificationMethod: 'SYSTEM',
-            // Enhanced accounting fields
-            partyName: activeAccount?.bank || 'Bank Account',
-            partyType: 'BANK',
-            paymentMode: 'BANK_TRANSFER',
-            customNote: `Wallet withdrawal to ${activeAccount?.bank || 'bank'} account - Amount: ₹${amountToWithdraw.toLocaleString()}`,
-            chartOfAccount: 'DIGITAL_WALLET_PAYMENTS',
-            voucherNumber: `WD-${Date.now()}`,
-            metadata: {
-              bank_account_id: activeAccount?.id,
-              bank_name: activeAccount?.bank,
-              account_number: activeAccount?.accountNumber,
-              withdrawal_timestamp: new Date().toISOString(),
-              accounting_period: new Date().toISOString().split('T')[0],
-              transaction_category: 'WALLET_WITHDRAWAL'
-            }
-          }
-        );
-        console.log('Withdrawal transaction recorded');
-      } catch (dbError) {
-        console.error('Error recording withdrawal transaction to local database:', dbError);
-        // Continue even if local recording fails
+      if (success) {
+        toast({
+          title: "Withdrawal Processed",
+          description: `₹${amountToWithdraw.toLocaleString()} has been withdrawn from your wallet`,
+        });
+        setWithdrawAmount("");
+      } else {
+        toast({
+          title: "Insufficient Balance",
+          description: "You don't have enough balance for this withdrawal",
+          variant: "destructive"
+        });
       }
-
+    } catch (error) {
+      console.error('Withdrawal error:', error);
       toast({
-        title: "Withdrawal Processed",
-        description: `₹${amountToWithdraw.toLocaleString()} has been withdrawn from your wallet`,
-      });
-      setWithdrawAmount("");
-    } else {
-      toast({
-        title: "Insufficient Balance",
-        description: "You don't have enough balance for this withdrawal",
+        title: "Withdrawal Error",
+        description: "Failed to process withdrawal. Please try again.",
         variant: "destructive"
       });
     }
@@ -869,14 +766,6 @@ const Wallet = () => {
 
       const apiResult = await submitBankingDetails(accountIdentityId);
 
-      // Step 3: Sync the new account to local database
-      try {
-        await walletSyncService.syncBankAccountToLocal(apiResult);
-        console.log('Bank account synced to local database');
-      } catch (syncError) {
-        console.error('Error syncing bank account to local database:', syncError);
-        // Continue even if local sync fails
-      }
 
       // Step 4: Refresh bank accounts from API to get the latest data
       await fetchBankAccounts();
@@ -964,25 +853,6 @@ const Wallet = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">{user?.name || "User"}'s Wallet</h1>
         <div className="flex items-center space-x-4">
-          {/* Sync Status and Manual Sync Button */}
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1">
-              <div className={`h-2 w-2 rounded-full ${syncStatus.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
-              <span className="text-xs text-muted-foreground">
-                {syncStatus.isActive ? 'Auto-sync ON' : 'Auto-sync OFF'}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={triggerManualSync}
-              disabled={isManualSyncing || !syncStatus.canManualSync}
-              className="h-8"
-            >
-              <RefreshCw className={`h-3 w-3 mr-1 ${isManualSyncing ? 'animate-spin' : ''}`} />
-              {isManualSyncing ? 'Syncing...' : 'Sync'}
-            </Button>
-          </div>
 
           <div className="flex items-center space-x-2">
             <Shield className="h-4 w-4 text-success" />
@@ -999,9 +869,9 @@ const Wallet = () => {
             <WalletIcon className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">₹{walletData.balance.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-primary">₹{(walletData.balance || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Real-time from local database with integrity checks
+              Real-time balance information
             </p>
           </CardContent>
         </Card>
@@ -1012,7 +882,7 @@ const Wallet = () => {
             <TrendingUp className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">₹{walletData.totalInvested.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-blue-600">₹{(walletData.totalInvested || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Tracked across all transactions
             </p>
@@ -1025,9 +895,9 @@ const Wallet = () => {
             <Minus className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">₹{walletData.totalWithdrawn.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-red-600">₹{(walletData.totalWithdrawn || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              With complete audit trail
+              Total withdrawn funds
             </p>
           </CardContent>
         </Card>
@@ -1038,40 +908,22 @@ const Wallet = () => {
             <Plus className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">₹{walletData.profitEarned.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-success">₹{(walletData.profitEarned || 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Verified and backed up
+              Total profit earned
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Database Health Status */}
-      <Card className="border-green-200 bg-green-50/50">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-green-800">Enhanced Accounting System Active</h3>
-              <p className="text-sm text-green-700">
-                Professional ledger format • Complete audit trail • Accounting compliance • Automatic vouchers
-              </p>
-            </div>
-            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-              Accounting Ready
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
 
 
       <Tabs defaultValue="manage" className="space-y-4">
         <TabsList>
           <TabsTrigger value="manage">Manage Funds</TabsTrigger>
           <TabsTrigger value="accounts">Bank Accounts</TabsTrigger>
-          <TabsTrigger value="wallet-ledger">Wallet Ledger</TabsTrigger>
+          <TabsTrigger value="ledger">Wallet Ledger</TabsTrigger>
           <TabsTrigger value="transactions">Financial Transactions</TabsTrigger>
-          <TabsTrigger value="database">Local Database</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manage" className="space-y-4">
@@ -1133,8 +985,16 @@ const Wallet = () => {
                 <Button
                   onClick={handleAddFunds}
                   className="w-full"
+                  disabled={isLoading}
                 >
-                  Add Funds
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Add Funds"
+                  )}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                   Secure payment powered by your payment gateway
@@ -1164,17 +1024,26 @@ const Wallet = () => {
                     onChange={(e) => setWithdrawAmount(e.target.value)}
                   />
                 </div>
-                <Button onClick={handleWithdraw} variant="outline" className="w-full">
-                  Withdraw Funds
+                <Button
+                  onClick={handleWithdraw}
+                  variant="outline"
+                  className="w-full"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Withdraw Funds"
+                  )}
                 </Button>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="wallet-ledger" className="space-y-4">
-          <WalletTransactionsTable />
-        </TabsContent>
 
         <TabsContent value="accounts" className="space-y-4">
           <Card>
@@ -1280,6 +1149,134 @@ const Wallet = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="ledger" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Wallet Transaction Ledger
+              </CardTitle>
+              <CardDescription>
+                Complete history of all wallet transactions and balance changes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span className="text-muted-foreground">Loading transactions...</span>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Database className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-muted-foreground mb-2">No Transactions</h3>
+                  <p className="text-sm text-muted-foreground">Your transaction history will appear here once you add or withdraw funds.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2 font-medium">Date & Time</th>
+                          <th className="text-left p-2 font-medium">Type</th>
+                          <th className="text-left p-2 font-medium">Amount</th>
+                          <th className="text-left p-2 font-medium">Balance Before</th>
+                          <th className="text-left p-2 font-medium">Balance After</th>
+                          <th className="text-left p-2 font-medium">Description</th>
+                          <th className="text-left p-2 font-medium">Transaction ID</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transactions.map((transaction) => (
+                          <tr key={transaction.id} className="border-b hover:bg-muted/50">
+                            <td className="p-2">
+                              {new Date(transaction.created_at).toLocaleString()}
+                            </td>
+                            <td className="p-2">
+                              <Badge
+                                variant="outline"
+                                className={`${
+                                  transaction.transaction_type === 'ADD'
+                                    ? 'bg-success/10 text-success border-success/20'
+                                    : transaction.transaction_type === 'WITHDRAW'
+                                    ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                    : transaction.transaction_type === 'INVESTMENT'
+                                    ? 'bg-blue-100 text-blue-600 border-blue-200'
+                                    : 'bg-purple-100 text-purple-600 border-purple-200'
+                                }`}
+                              >
+                                {transaction.transaction_type}
+                              </Badge>
+                            </td>
+                            <td className="p-2 font-medium">
+                              <span className={`${
+                                transaction.transaction_type === 'ADD' || transaction.transaction_type === 'PROFIT'
+                                  ? 'text-success'
+                                  : 'text-destructive'
+                              }`}>
+                                {transaction.transaction_type === 'ADD' || transaction.transaction_type === 'PROFIT' ? '+' : '-'}
+                                ₹{transaction.amount.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="p-2">₹{transaction.balance_before.toLocaleString()}</td>
+                            <td className="p-2 font-medium">₹{transaction.balance_after.toLocaleString()}</td>
+                            <td className="p-2 text-muted-foreground">{transaction.description}</td>
+                            <td className="p-2 text-xs text-muted-foreground font-mono">
+                              {transaction.transaction_id || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {transactions.length} transactions
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const data = await exportData();
+                          const csvContent = [
+                            'Date,Type,Amount,Balance Before,Balance After,Description,Transaction ID',
+                            ...data.transactions.map(t =>
+                              `"${new Date(t.created_at).toLocaleString()}",${t.transaction_type},${t.amount},${t.balance_before},${t.balance_after},"${t.description}","${t.transaction_id || ''}"`
+                            )
+                          ].join('\n');
+
+                          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                          const link = document.createElement('a');
+                          if (link.download !== undefined) {
+                            const url = URL.createObjectURL(blob);
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', `wallet-transactions-${new Date().toISOString().split('T')[0]}.csv`);
+                            link.style.visibility = 'hidden';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }
+                        } catch (error) {
+                          console.error('Export failed:', error);
+                          toast({
+                            title: "Export Failed",
+                            description: "Failed to export transaction data",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      Export CSV
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="transactions" className="space-y-4">
           <FinancialTransactionsTable
             userId={user?.id || user?._id}
@@ -1287,9 +1284,6 @@ const Wallet = () => {
           />
         </TabsContent>
 
-        <TabsContent value="database" className="space-y-4">
-          <DatabaseViewer />
-        </TabsContent>
       </Tabs>
 
       {/* Add Bank Account Dialog */}
