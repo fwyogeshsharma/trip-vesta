@@ -200,6 +200,115 @@ const Trips = () => {
     setSelectedLiveTrips(newSelected);
   };
 
+  // Individual trip investment handler
+  const handleInvestInSingleTrip = async (trip: any) => {
+    // Check if user has sufficient balance
+    const investmentAmount = trip.freightCharges || trip.total_freight_Charges || 0;
+    if (walletData.balance < investmentAmount) {
+      toast({
+        title: "Insufficient Balance",
+        description: `You need ₹${investmentAmount.toLocaleString()} but only have ₹${walletData.balance.toLocaleString()} in your wallet.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsInvesting(true);
+    try {
+      // Simulate investment processing
+      toast({
+        title: "Processing Investment",
+        description: `Investing ₹${investmentAmount.toLocaleString()} in ${trip.sender?.company || trip.name || 'Unknown Company'}...`,
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Deduct amount from wallet balance
+      const balanceDeducted = deductFromBalance(investmentAmount);
+
+      if (!balanceDeducted) {
+        throw new Error("Failed to deduct amount from wallet balance");
+      }
+
+      toast({
+        title: "Investment Successful! 🎉",
+        description: `Successfully invested ₹${investmentAmount.toLocaleString()} in trip ${trip.tripNumber}`,
+      });
+
+      // Remove from selected trips if it was selected
+      const newSelected = new Set(selectedLiveTrips);
+      newSelected.delete(trip.id);
+      setSelectedLiveTrips(newSelected);
+
+    } catch (error) {
+      toast({
+        title: "Investment Failed",
+        description: error instanceof Error ? error.message : "An error occurred during investment",
+        variant: "destructive"
+      });
+    } finally {
+      setIsInvesting(false);
+    }
+  };
+
+  // Multiple trips investment handler
+  const handleInvestInSelectedLiveTrips = async () => {
+    if (selectedLiveTrips.size === 0) {
+      toast({
+        title: "No Trips Selected",
+        description: "Please select at least one trip to invest in",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if user has sufficient balance
+    const totalAmount = getTotalSelectedCost();
+    if (walletData.balance < totalAmount) {
+      toast({
+        title: "Insufficient Balance",
+        description: `You need ₹${totalAmount.toLocaleString()} but only have ₹${walletData.balance.toLocaleString()} in your wallet.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsInvesting(true);
+    try {
+      // Simulate investment processing
+      toast({
+        title: "Processing Investments",
+        description: `Processing investments for ${selectedLiveTrips.size} trips...`,
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Deduct amount from wallet balance
+      const balanceDeducted = deductFromBalance(totalAmount);
+
+      if (!balanceDeducted) {
+        throw new Error("Failed to deduct amount from wallet balance");
+      }
+
+      toast({
+        title: "Investments Successful! 🎉",
+        description: `Successfully invested ₹${totalAmount.toLocaleString()} across ${selectedLiveTrips.size} trips`,
+      });
+
+      // Clear selections
+      setSelectedLiveTrips(new Set());
+
+    } catch (error) {
+      toast({
+        title: "Investment Failed",
+        description: error instanceof Error ? error.message : "An error occurred during investment",
+        variant: "destructive"
+      });
+    } finally {
+      setIsInvesting(false);
+    }
+  };
+
   const handleSelectAllLiveTrips = (checked: boolean) => {
     if (checked) {
       const allTripIds = new Set(filteredApiTrips.map(trip => trip.id));
@@ -221,7 +330,7 @@ const Trips = () => {
   const getTotalSelectedCost = () => {
     return filteredApiTrips
       .filter(trip => selectedLiveTrips.has(trip.id))
-      .reduce((total, trip) => total + (trip.total_freight_Charges || 0), 0);
+      .reduce((total, trip) => total + (trip.freightCharges || trip.total_freight_Charges || 0), 0);
   };
 
   const getSelectedTripsData = () => {
@@ -2378,6 +2487,24 @@ const Trips = () => {
                             <X className="h-4 w-4 mr-1" />
                             Clear All
                           </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleInvestInSelectedLiveTrips}
+                            disabled={isInvesting || selectedLiveTrips.size === 0}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            {isInvesting ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                Investing...
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp className="h-4 w-4 mr-1" />
+                                Invest All
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
 
@@ -2417,7 +2544,7 @@ const Trips = () => {
                                     </td>
                                     <td className="py-2 px-3 text-blue-800">{trip.vehicleNumber}</td>
                                     <td className="py-2 px-3 text-right font-medium text-blue-800">
-                                      ₹{(trip.totalCost || 0).toLocaleString()}
+                                      ₹{(trip.freightCharges || trip.total_freight_Charges || 0).toLocaleString()}
                                     </td>
                                   </tr>
                                 ))}
@@ -2494,8 +2621,22 @@ const Trips = () => {
                                   <MapPin className="h-3 w-3 flex-shrink-0" />
                                   <span className="truncate">{trip.pickup?.city} → {trip.delivery?.city}</span>
                                 </div>
-                                <div className="text-xs font-medium text-green-700 mt-1">
-                                  ₹{(trip.totalCost / 1000).toFixed(0)}K
+                                <div className="flex items-center justify-between mt-1">
+                                  <div className="text-xs font-medium text-green-700">
+                                    ₹{((trip.freightCharges || trip.total_freight_Charges || 0) / 1000).toFixed(0)}K
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleInvestInSingleTrip(trip)}
+                                    disabled={isInvesting}
+                                    className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                                  >
+                                    {isInvesting ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      "Invest"
+                                    )}
+                                  </Button>
                                 </div>
                               </div>
                             </div>
@@ -2510,12 +2651,26 @@ const Trips = () => {
                     {filteredApiTrips.map((trip) => (
                       <Card key={trip.id} className="p-0 hover:shadow-md transition-shadow relative">
                         {/* Insured Badge */}
-                        <Badge
-                          variant="outline"
-                          className="absolute top-2 right-2 bg-green-100 text-green-700 border-green-300 text-xs z-10"
-                        >
-                          🛡️ Insured
-                        </Badge>
+                        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+                          <Badge
+                            variant="outline"
+                            className="bg-green-100 text-green-700 border-green-300 text-xs"
+                          >
+                            🛡️ Insured
+                          </Badge>
+                          <Button
+                            size="sm"
+                            onClick={() => handleInvestInSingleTrip(trip)}
+                            disabled={isInvesting}
+                            className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            {isInvesting ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              "Invest"
+                            )}
+                          </Button>
+                        </div>
 
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between py-1">
