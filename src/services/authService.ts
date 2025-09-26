@@ -150,6 +150,7 @@ export const getAuthToken = (): string | null => {
 export const removeAuthToken = (): void => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('data');
+  localStorage.removeItem('currentUserId');
 };
 
 /**
@@ -157,6 +158,13 @@ export const removeAuthToken = (): void => {
  */
 export const storeUserData = (userData: any): void => {
   localStorage.setItem('data', JSON.stringify(userData));
+
+  // Also store the user ID separately for components that need it
+  if (userData && (userData.id || userData._id)) {
+    const userId = userData.id || userData._id;
+    localStorage.setItem('currentUserId', userId);
+    console.log('Stored currentUserId in localStorage:', userId);
+  }
 };
 
 /**
@@ -165,6 +173,28 @@ export const storeUserData = (userData: any): void => {
 export const getUserData = (): any | null => {
   const data = localStorage.getItem('data');
   return data ? JSON.parse(data) : null;
+};
+
+/**
+ * Get current user ID from localStorage
+ */
+export const getCurrentUserId = (): string | null => {
+  // Try to get from currentUserId first
+  const currentUserId = localStorage.getItem('currentUserId');
+  if (currentUserId) {
+    return currentUserId;
+  }
+
+  // Fallback: try to extract from user data
+  const userData = getUserData();
+  if (userData && (userData.id || userData._id)) {
+    const userId = userData.id || userData._id;
+    // Store it for next time
+    localStorage.setItem('currentUserId', userId);
+    return userId;
+  }
+
+  return null;
 };
 
 /**

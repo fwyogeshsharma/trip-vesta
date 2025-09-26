@@ -109,7 +109,9 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
     return financialTransactionsService.getEntryTypeColor(entryType);
   };
 
-  const getPaymentModeColor = (mode: string) => {
+  const getPaymentModeColor = (mode: string | null | undefined) => {
+    if (!mode) return 'bg-gray-100 text-gray-700';
+
     switch (mode.toLowerCase()) {
       case 'cashfree payments gateway':
         return 'bg-blue-100 text-blue-700';
@@ -241,7 +243,7 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
                           variant="secondary"
                           className={`text-xs ${getPaymentModeColor(transaction.payment_transfer_mode)}`}
                         >
-                          {transaction.payment_transfer_mode}
+                          {transaction.payment_transfer_mode || 'N/A'}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-2">

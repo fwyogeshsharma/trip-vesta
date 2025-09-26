@@ -8,6 +8,7 @@ import {
   UserProfile,
   UserPatchResponse
 } from '@/services/userService';
+import { getCurrentUserId } from '@/services/authService';
 
 export const useUserProfile = (userId?: string) => {
   const [profile, setProfile] = useState<any>(null);
@@ -15,8 +16,8 @@ export const useUserProfile = (userId?: string) => {
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
 
-  // Get user ID from context/storage if not provided
-  const effectiveUserId = userId || localStorage.getItem('currentUserId') || '6257f1d75b42235a2ae4ab34';
+  // Get user ID from context/storage if not provided - NO hardcoded fallback
+  const effectiveUserId = userId || getCurrentUserId();
 
   const fetchProfile = async () => {
     if (!effectiveUserId) {

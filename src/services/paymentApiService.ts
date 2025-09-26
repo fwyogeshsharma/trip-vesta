@@ -157,8 +157,8 @@ class PaymentApiService {
         mode_of_payment: "Online",
         order_note: "Lender Investment",
         product_or_service: "68d3f6fb262b4bc5964b6a68",
-        paying_user: "6257f1d75b42235a2ae4ab34",
-        receiving_user: "6257f1d75b42235a2ae4ab34"
+        paying_user: userId,
+        receiving_user: userId
       };
 
       console.log('Creating wallet top-up request with payload:', payload);

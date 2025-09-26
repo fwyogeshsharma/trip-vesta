@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getAuthToken, removeAuthToken, getUserData } from '@/services/authService';
+import { getAuthToken, removeAuthToken, getUserData, storeUserData } from '@/services/authService';
 
 interface User {
   id: string;
@@ -66,6 +66,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsAuthenticated(true);
     if (userData) {
       setUser(userData);
+
+      // Store the user data in localStorage, including currentUserId
+      storeUserData(userData);
     }
   };
 

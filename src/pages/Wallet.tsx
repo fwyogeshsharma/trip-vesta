@@ -311,20 +311,24 @@ const Wallet = () => {
     if (currentTab === 'transactions' && user) {
       const performAutoSync = async () => {
         try {
-          console.log('🔄 Auto-syncing wallet from financial transactions...');
-          const result = await syncWalletFromFinancialTransactions("62d66794e54f47829a886a1d");
+          console.log('🔄 Auto-syncing wallet from financial transactions for user:', {
+            name: user.name,
+            id: user.id || user._id,
+            email: user.email
+          });
+          const result = await syncWalletFromFinancialTransactions(user?.company_id || "62d66794e54f47829a886a1d");
 
           if (result.success) {
-            console.log('✅ Auto-sync completed:', {
+            console.log('✅ Auto-sync completed for', user.name || 'User', ':', {
               totalAmount: `₹${result.totalAmount.toLocaleString()}`,
               totalInvested: `₹${result.totalInvested.toLocaleString()}`,
               transactionsProcessed: result.transactionsProcessed
             });
           } else {
-            console.warn('⚠️ Auto-sync failed:', result.error);
+            console.warn('⚠️ Auto-sync failed for', user.name || 'User', ':', result.error);
           }
         } catch (error) {
-          console.error('❌ Auto-sync error:', error);
+          console.error('❌ Auto-sync error for', user.name || 'User', ':', error);
         }
       };
 
@@ -539,13 +543,15 @@ const Wallet = () => {
         throw new Error('Authentication token not found');
       }
 
+      const userId = user?.id || user?._id || 'current_user';
+
       const payload = {
         amount: parseFloat(addAmount),
         mode_of_payment: "Online",
         order_note: "Lender Investment",
-        paying_user: "6257f1d75b42235a2ae4ab34",
+        paying_user: userId,
         product_or_service: "68d3f6fb262b4bc5964b6a68",
-        receiving_user: "6257f1d75b42235a2ae4ab34"
+        receiving_user: userId
       };
 
       console.log('Creating payment request with payload:', payload);
@@ -901,15 +907,20 @@ const Wallet = () => {
   return (
     <div className="flex-1 space-y-6 p-6 bg-background text-foreground">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">{user?.name || "User"}'s Wallet</h1>
-        <div className="flex items-center space-x-4">
-
-          <div className="flex items-center space-x-2">
-            <Shield className="h-4 w-4 text-success" />
-            <span className="text-sm text-muted-foreground">Secure</span>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {user?.name || "User"}'s Wallet
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your funds and transactions
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Shield className="h-4 w-4 text-success" />
+          <span className="text-sm text-muted-foreground">Secure Wallet</span>
         </div>
       </div>
+
 
       {/* Enhanced Wallet Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
