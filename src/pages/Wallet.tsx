@@ -1039,13 +1039,6 @@ const Wallet = () => {
         <div className="flex items-center gap-2 mb-4">
           <Calculator className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold">Balance Overview</h3>
-          <Badge variant="outline" className="text-xs">
-            {balanceLoading ? 'Loading...' : `Based on ${balanceCalculation.totalTransactions} transactions`}
-          </Badge>
-          <Badge variant="outline" className="text-xs bg-primary/10 text-primary">
-            <Database className="h-3 w-3 mr-1" />
-            localStorage Storage
-          </Badge>
           <Button
             variant="outline"
             size="sm"
