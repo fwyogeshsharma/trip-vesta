@@ -23,6 +23,7 @@ import {
   FinancialTransaction,
   FinancialTransactionsResponse
 } from "@/services/financialTransactionsService";
+import { useWallet } from "@/contexts/WalletContext";
 
 interface FinancialTransactionsTableProps {
   userId?: string;
@@ -34,6 +35,7 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
   companyId = "62d66794e54f47829a886a1d"
 }) => {
   const { toast } = useToast();
+  const { syncLocalStorageWithFinancialTransactions } = useWallet();
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +127,20 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
         creditCount,
         debitCount,
         totalTransactions: allTxns.length
+      });
+
+      // 🔄 Sync localStorage with calculated balance from ALL financial transactions
+      syncLocalStorageWithFinancialTransactions(
+        netBalance,
+        totalCredits,
+        totalDebits,
+        creditCount,
+        debitCount
+      );
+
+      console.log('🔄 FinancialTransactionsTable synced localStorage with calculated balance:', {
+        netBalance: `₹${netBalance.toLocaleString()}`,
+        source: 'All Financial Transactions API'
       });
 
     } catch (err: unknown) {

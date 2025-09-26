@@ -75,7 +75,7 @@ const verifyPaymentWithBackend = async (orderId: string) => {
 
 const Wallet = () => {
   const { toast } = useToast();
-  const { walletData, addToBalance, withdrawFromBalance, syncWalletFromFinancialTransactions, isLoading } = useWallet();
+  const { walletData, addToBalance, withdrawFromBalance, syncWalletFromFinancialTransactions, syncLocalStorageWithFinancialTransactions, refreshLocalData, isLoading } = useWallet();
   const { user } = useAuth();
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -141,6 +141,20 @@ const Wallet = () => {
         netBalance: `₹${calculatedNetBalance.toLocaleString()}`,
         transactionsProcessed: transactions.length,
         totalAvailable: response._meta?.total || 'Unknown'
+      });
+
+      // 🔄 Sync localStorage with calculated financial transaction balance
+      syncLocalStorageWithFinancialTransactions(
+        calculatedNetBalance,
+        totalCredits,
+        totalDebits,
+        creditCount,
+        debitCount
+      );
+
+      console.log('🔄 localStorage synced with financial transaction balance:', {
+        calculatedBalance: `₹${calculatedNetBalance.toLocaleString()}`,
+        source: 'Financial Transactions API'
       });
 
       return calculatedNetBalance;
@@ -1003,9 +1017,15 @@ const Wallet = () => {
             Manage your funds and transactions
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Shield className="h-4 w-4 text-success" />
-          <span className="text-sm text-muted-foreground">Secure Wallet</span>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Shield className="h-4 w-4 text-success" />
+            <span className="text-sm text-muted-foreground">Secure Wallet</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="text-sm text-muted-foreground">localStorage Enabled</span>
+          </div>
         </div>
       </div>
 
@@ -1022,6 +1042,25 @@ const Wallet = () => {
           <Badge variant="outline" className="text-xs">
             {balanceLoading ? 'Loading...' : `Based on ${balanceCalculation.totalTransactions} transactions`}
           </Badge>
+          <Badge variant="outline" className="text-xs bg-primary/10 text-primary">
+            <Database className="h-3 w-3 mr-1" />
+            localStorage Storage
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              calculateNetBalance();
+              toast({
+                title: "Balance Sync Initiated",
+                description: "Syncing localStorage with financial transactions...",
+              });
+            }}
+            className="ml-2"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Sync Balance
+          </Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -1205,6 +1244,22 @@ const Wallet = () => {
                   ) : (
                     "Add Funds"
                   )}
+                </Button>
+
+                {/* Test Balance Button for Demo */}
+                <Button
+                  onClick={() => {
+                    addToBalance(50000, "Demo balance for testing investments");
+                    toast({
+                      title: "Demo Balance Added",
+                      description: "₹50,000 added for testing investments",
+                    });
+                  }}
+                  variant="outline"
+                  className="w-full mt-2"
+                  disabled={isLoading}
+                >
+                  Add ₹50,000 Demo Balance
                 </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                   Secure payment powered by your payment gateway

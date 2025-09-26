@@ -72,7 +72,7 @@ const Trips = () => {
     canonical: 'https://tripvesta.com/trips'
   });
 
-  const { walletData, deductFromBalance } = useWallet();
+  const { walletData, investInTrip } = useWallet();
 
   // Add custom styles for responsive trip cards
   const tripCardStyles = `
@@ -215,25 +215,71 @@ const Trips = () => {
 
     setIsInvesting(true);
     try {
-      // Simulate investment processing
+      // Show processing toast
       toast({
         title: "Processing Investment",
-        description: `Investing ₹${investmentAmount.toLocaleString()} in ${trip.sender?.company || trip.name || 'Unknown Company'}...`,
+        description: `Investing ₹${investmentAmount.toLocaleString()} in ${trip.sender?.company || trip.materialType || 'Trip'}...`,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Use the new localStorage-based investment function
+      const investmentSuccess = investInTrip(
+        investmentAmount,
+        `Trip Investment: ${trip.sender?.company || trip.materialType || 'Unknown Company'} - ${trip.pickup?.city} to ${trip.delivery?.city}`,
+        `trip_${trip.id}_${Date.now()}`
+      );
 
-      // Deduct amount from wallet balance
-      const balanceDeducted = deductFromBalance(investmentAmount);
-
-      if (!balanceDeducted) {
-        throw new Error("Failed to deduct amount from wallet balance");
+      if (!investmentSuccess) {
+        throw new Error("Insufficient balance or investment processing failed");
       }
 
+      // Create investment data for My Investments tab
+      const investmentData: InvestmentData = {
+        id: Date.now(), // Unique investment ID
+        tripName: `${trip.sender?.company || trip.materialType || 'Trip'} - ${trip.pickup?.city} to ${trip.delivery?.city}`,
+        amount: investmentAmount,
+        investedDate: new Date().toISOString().split('T')[0],
+        tripStartDate: new Date().toISOString().split('T')[0],
+        expectedEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 90 days from now
+        status: "upcoming",
+        progress: 0,
+        daysRemaining: 90,
+        profitCredited: 0,
+        profitGain: {
+          amount: Math.floor(investmentAmount * 0.15), // 15% profit
+          percentage: 15
+        },
+        originalTripId: trip.id,
+        companyLogo: trip.sender?.logo || '/default-company-logo.png',
+        milestones: [
+          { id: 1, name: "Investment Confirmed", icon: CheckCircle, status: "completed", date: new Date().toISOString().split('T')[0] },
+          { id: 2, name: "Trip Assignment", icon: Truck, status: "pending", date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+          { id: 3, name: "Cargo Loading", icon: Luggage, status: "pending", date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+          { id: 4, name: "In Transit", icon: Navigation, status: "pending", date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+          { id: 5, name: "Delivery Complete", icon: CheckCircle, status: "pending", date: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+          { id: 6, name: "Returns Processing", icon: DollarSign, status: "pending", date: new Date(Date.now() + 85 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+          { id: 7, name: "Profit Distribution", icon: TrendingUp, status: "pending", date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+        ]
+      };
+
+      // Add to My Investments
+      InvestmentStorage.addInvestment(investmentData);
+      setUserInvestments(prev => [investmentData, ...prev]);
+
+      // Show success message with 24-hour delay info
       toast({
-        title: "Investment Successful! 🎉",
-        description: `Successfully invested ₹${investmentAmount.toLocaleString()} in trip ${trip.tripNumber}`,
+        title: "Trip Investment Noted! 🎉",
+        description: `₹${investmentAmount.toLocaleString()} investment confirmed. Transaction will be reflected in your wallet within 24 hours.`,
+        duration: 6000
       });
+
+      // Additional notification for clarity
+      setTimeout(() => {
+        toast({
+          title: "Investment Processing",
+          description: "Your investment is being processed. Wallet balance will update within 24 hours.",
+          variant: "default"
+        });
+      }, 2000);
 
       // Remove from selected trips if it was selected
       const newSelected = new Set(selectedLiveTrips);
@@ -283,17 +329,67 @@ const Trips = () => {
 
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Deduct amount from wallet balance
-      const balanceDeducted = deductFromBalance(totalAmount);
+      // Use the new localStorage-based investment function
+      const investmentSuccess = investInTrip(
+        totalAmount,
+        `Bulk Trip Investment - ${selectedLiveTrips.size} trips`,
+        `bulk_investment_${Date.now()}`
+      );
 
-      if (!balanceDeducted) {
-        throw new Error("Failed to deduct amount from wallet balance");
+      if (!investmentSuccess) {
+        throw new Error("Insufficient balance or investment processing failed");
       }
 
-      toast({
-        title: "Investments Successful! 🎉",
-        description: `Successfully invested ₹${totalAmount.toLocaleString()} across ${selectedLiveTrips.size} trips`,
+      // Add all selected trips to My Investments
+      const selectedTripsData = getSelectedTripsData();
+      selectedTripsData.forEach(trip => {
+        const tripAmount = trip.freightCharges || trip.total_freight_Charges || 0;
+        const investmentData: InvestmentData = {
+          id: Date.now() + Math.random(), // Unique investment ID
+          tripName: `${trip.sender?.company || trip.materialType || 'Trip'} - ${trip.pickup?.city} to ${trip.delivery?.city}`,
+          amount: tripAmount,
+          investedDate: new Date().toISOString().split('T')[0],
+          tripStartDate: new Date().toISOString().split('T')[0],
+          expectedEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: "upcoming",
+          progress: 0,
+          daysRemaining: 90,
+          profitCredited: 0,
+          profitGain: {
+            amount: Math.floor(tripAmount * 0.15),
+            percentage: 15
+          },
+          originalTripId: trip.id,
+          companyLogo: trip.sender?.logo || '/default-company-logo.png',
+          milestones: [
+            { id: 1, name: "Investment Confirmed", icon: CheckCircle, status: "completed", date: new Date().toISOString().split('T')[0] },
+            { id: 2, name: "Trip Assignment", icon: Truck, status: "pending", date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: 3, name: "Cargo Loading", icon: Luggage, status: "pending", date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: 4, name: "In Transit", icon: Navigation, status: "pending", date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: 5, name: "Delivery Complete", icon: CheckCircle, status: "pending", date: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: 6, name: "Returns Processing", icon: DollarSign, status: "pending", date: new Date(Date.now() + 85 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            { id: 7, name: "Profit Distribution", icon: TrendingUp, status: "pending", date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }
+          ]
+        };
+
+        InvestmentStorage.addInvestment(investmentData);
+        setUserInvestments(prev => [investmentData, ...prev]);
       });
+
+      toast({
+        title: "Trip Investments Noted! 🎉",
+        description: `₹${totalAmount.toLocaleString()} investment across ${selectedLiveTrips.size} trips confirmed. Transactions will be reflected in your wallet within 24 hours.`,
+        duration: 6000
+      });
+
+      // Additional notification for bulk investments
+      setTimeout(() => {
+        toast({
+          title: "Bulk Investment Processing",
+          description: `${selectedLiveTrips.size} trip investments are being processed. Wallet balance will update within 24 hours.`,
+          variant: "default"
+        });
+      }, 2500);
 
       // Clear selections
       setSelectedLiveTrips(new Set());
