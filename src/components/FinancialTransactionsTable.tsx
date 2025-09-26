@@ -74,7 +74,8 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
           response = await financialTransactionsService.getFinancialTransactions(
             companyId,
             currentPage,
-            maxResultsPerPage
+            maxResultsPerPage,
+            userId
           );
         }
 
@@ -151,7 +152,8 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
         response = await financialTransactionsService.getFinancialTransactions(
           companyId,
           page,
-          maxResults
+          maxResults,
+          userId
         );
       }
 

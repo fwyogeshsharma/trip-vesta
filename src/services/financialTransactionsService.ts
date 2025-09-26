@@ -118,7 +118,8 @@ class FinancialTransactionsService {
   async getFinancialTransactions(
     companyId: string = "62d66794e54f47829a886a1d",
     page: number = 1,
-    maxResults: number = 25
+    maxResults: number = 25,
+    userId?: string
   ): Promise<FinancialTransactionsResponse> {
     try {
       const token = getAuthToken();
@@ -127,11 +128,16 @@ class FinancialTransactionsService {
       }
 
       // Build query parameters
-      const where = {
+      const where: any = {
         "book_owner.company": companyId,
         "chart_of_account": { "$in": [1000, 1001] },
         "cancelled": { "$exists": false }
       };
+
+      // Add user filter if userId is provided
+      if (userId) {
+        where["party.user"] = userId;
+      }
 
       const embedded = {
         "chart_of_account": 1,

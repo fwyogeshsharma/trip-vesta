@@ -101,7 +101,7 @@ const Wallet = () => {
       const companyId = user?.company_id || "62d66794e54f47829a886a1d";
 
       // Use the same simple approach as FinancialTransactionsTable - just get first page to see total
-      const response = await financialTransactionsService.getFinancialTransactions(companyId, 1, 25);
+      const response = await financialTransactionsService.getFinancialTransactions(companyId, 1, 25, user?.id || user?._id);
 
       console.log('📊 Financial transactions response:', response);
 
