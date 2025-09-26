@@ -11,7 +11,11 @@ import {
   TrendingUp,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Calculator,
+  Plus,
+  Minus,
+  Wallet
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -36,7 +40,96 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalTransactions, setTotalTransactions] = useState(0);
+  const [allTransactions, setAllTransactions] = useState<FinancialTransaction[]>([]);
+  const [balanceCalculation, setBalanceCalculation] = useState({
+    totalCredits: 0,
+    totalDebits: 0,
+    netBalance: 0,
+    creditCount: 0,
+    debitCount: 0
+  });
   const maxResults = 25;
+
+  // Load ALL transactions for balance calculation
+  const loadAllTransactionsForCalculation = async () => {
+    try {
+      console.log('Loading ALL transactions for balance calculation...');
+
+      let allTxns: FinancialTransaction[] = [];
+      let currentPage = 1;
+      let hasMorePages = true;
+      const maxResultsPerPage = 100; // Larger batch size for calculation
+
+      while (hasMorePages) {
+        let response: FinancialTransactionsResponse;
+
+        if (userId) {
+          response = await financialTransactionsService.getUserTransactions(
+            userId,
+            companyId,
+            currentPage,
+            maxResultsPerPage
+          );
+        } else {
+          response = await financialTransactionsService.getFinancialTransactions(
+            companyId,
+            currentPage,
+            maxResultsPerPage
+          );
+        }
+
+        allTxns.push(...(response._items || []));
+
+        // Check if there are more pages
+        hasMorePages = (response._items || []).length === maxResultsPerPage;
+        currentPage++;
+
+        // Safety limit to prevent infinite loops
+        if (currentPage > 100) break;
+      }
+
+      console.log(`📊 Loaded ${allTxns.length} total transactions for calculation`);
+      setAllTransactions(allTxns);
+
+      // Calculate balance from all transactions
+      let totalCredits = 0;
+      let totalDebits = 0;
+      let creditCount = 0;
+      let debitCount = 0;
+
+      allTxns.forEach(tx => {
+        if (tx.entry_type === 'Credit') {
+          totalCredits += tx.amount;
+          creditCount++;
+        } else if (tx.entry_type === 'Debit') {
+          totalDebits += tx.amount;
+          debitCount++;
+        }
+      });
+
+      const netBalance = totalCredits - totalDebits;
+
+      setBalanceCalculation({
+        totalCredits,
+        totalDebits,
+        netBalance,
+        creditCount,
+        debitCount
+      });
+
+      console.log('💰 Balance Calculation Results:', {
+        totalCredits: `₹${totalCredits.toLocaleString()}`,
+        totalDebits: `₹${totalDebits.toLocaleString()}`,
+        netBalance: `₹${netBalance.toLocaleString()}`,
+        creditCount,
+        debitCount,
+        totalTransactions: allTxns.length
+      });
+
+    } catch (err: unknown) {
+      console.error('Error loading all transactions for calculation:', err);
+    }
+  };
 
   const loadTransactions = async (page: number = 1) => {
     setLoading(true);
@@ -89,6 +182,7 @@ export const FinancialTransactionsTable: React.FC<FinancialTransactionsTableProp
 
   useEffect(() => {
     loadTransactions(1);
+    loadAllTransactionsForCalculation(); // Load all transactions for balance calculation
   }, [userId, companyId]);
 
   const handlePageChange = (newPage: number) => {

@@ -24,7 +24,8 @@ import {
   Loader2,
   Flag,
   RefreshCw,
-  Database
+  Database,
+  Calculator
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWallet } from "@/contexts/WalletContext";
@@ -32,6 +33,7 @@ import { createFakeTransactionData, generateDetailedDescription, generateTransac
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthToken } from "@/services/authService";
 import FinancialTransactionsTable from "@/components/FinancialTransactionsTable";
+import { financialTransactionsService } from "@/services/financialTransactionsService";
 
 // Razorpay integration removed - users directed to production for payments
 
@@ -78,6 +80,78 @@ const Wallet = () => {
   const [addAmount, setAddAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [currentTab, setCurrentTab] = useState("manage");
+  const [netBalance, setNetBalance] = useState(0);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceCalculation, setBalanceCalculation] = useState({
+    totalCredits: 0,
+    totalDebits: 0,
+    netBalance: 0,
+    creditCount: 0,
+    debitCount: 0,
+    totalTransactions: 0
+  });
+
+  // Simple balance calculation using the same API as Financial Transactions tab
+  const calculateNetBalance = async () => {
+    if (!user) return;
+
+    setBalanceLoading(true);
+    try {
+      console.log('💰 Loading balance from financial transactions...');
+      const companyId = user?.company_id || "62d66794e54f47829a886a1d";
+
+      // Use the same simple approach as FinancialTransactionsTable - just get first page to see total
+      const response = await financialTransactionsService.getFinancialTransactions(companyId, 1, 25);
+
+      console.log('📊 Financial transactions response:', response);
+
+      // Calculate from the visible transactions (same as Financial Transactions tab)
+      const transactions = response._items || [];
+      let totalCredits = 0;
+      let totalDebits = 0;
+      let creditCount = 0;
+      let debitCount = 0;
+
+      transactions.forEach(tx => {
+        if (tx.entry_type === 'Credit') {
+          totalCredits += tx.amount;
+          creditCount++;
+        } else if (tx.entry_type === 'Debit') {
+          totalDebits += tx.amount;
+          debitCount++;
+        }
+      });
+
+      const calculatedNetBalance = totalCredits - totalDebits;
+      setNetBalance(calculatedNetBalance);
+
+      // Set balance calculation from visible transactions
+      setBalanceCalculation({
+        totalCredits,
+        totalDebits,
+        netBalance: calculatedNetBalance,
+        creditCount,
+        debitCount,
+        totalTransactions: transactions.length
+      });
+
+      console.log('💰 Balance from visible transactions:', {
+        totalCredits: `₹${totalCredits.toLocaleString()}`,
+        totalDebits: `₹${totalDebits.toLocaleString()}`,
+        netBalance: `₹${calculatedNetBalance.toLocaleString()}`,
+        transactionsProcessed: transactions.length,
+        totalAvailable: response._meta?.total || 'Unknown'
+      });
+
+      return calculatedNetBalance;
+
+    } catch (error) {
+      console.error('❌ Error calculating net balance:', error);
+      return 0;
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
 
   // Form states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -232,9 +306,15 @@ const Wallet = () => {
   useEffect(() => {
     if (user) {
       fetchBankAccounts();
-
     }
   }, [user, walletData]);
+
+  // Calculate net balance when component loads
+  useEffect(() => {
+    if (user) {
+      calculateNetBalance();
+    }
+  }, [user]);
 
   // Handle payment return from payment gateway
   useEffect(() => {
@@ -306,15 +386,16 @@ const Wallet = () => {
     }
   }, []);
 
-  // Auto-sync wallet when Financial Transactions tab is viewed
+  // Auto-sync wallet when component loads and when Financial Transactions tab is viewed
   useEffect(() => {
-    if (currentTab === 'transactions' && user) {
+    if (user) {
       const performAutoSync = async () => {
         try {
           console.log('🔄 Auto-syncing wallet from financial transactions for user:', {
             name: user.name,
             id: user.id || user._id,
-            email: user.email
+            email: user.email,
+            trigger: currentTab === 'transactions' ? 'tab_switch' : 'initial_load'
           });
           const result = await syncWalletFromFinancialTransactions(user?.company_id || "62d66794e54f47829a886a1d");
 
@@ -322,7 +403,8 @@ const Wallet = () => {
             console.log('✅ Auto-sync completed for', user.name || 'User', ':', {
               totalAmount: `₹${result.totalAmount.toLocaleString()}`,
               totalInvested: `₹${result.totalInvested.toLocaleString()}`,
-              transactionsProcessed: result.transactionsProcessed
+              transactionsProcessed: result.transactionsProcessed,
+              newWalletBalance: `₹${result.newWalletBalance.toLocaleString()}`
             });
           } else {
             console.warn('⚠️ Auto-sync failed for', user.name || 'User', ':', result.error);
@@ -332,9 +414,15 @@ const Wallet = () => {
         }
       };
 
-      // Add small delay to avoid immediate sync on tab switch
-      const timeoutId = setTimeout(performAutoSync, 500);
-      return () => clearTimeout(timeoutId);
+      // Sync immediately on component load, and also when switching to transactions tab
+      if (currentTab === 'transactions') {
+        // Add small delay to avoid immediate sync on tab switch
+        const timeoutId = setTimeout(performAutoSync, 500);
+        return () => clearTimeout(timeoutId);
+      } else {
+        // Sync immediately on component load
+        performAutoSync();
+      }
     }
   }, [currentTab, user, syncWalletFromFinancialTransactions]);
 
@@ -923,58 +1011,120 @@ const Wallet = () => {
 
 
       {/* Enhanced Wallet Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Balance</CardTitle>
-            <WalletIcon className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">₹{(walletData.balance || 0).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Real-time balance information
-            </p>
-          </CardContent>
-        </Card>
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold">Wallet Overview</h2>
+      </div>
+      {/* Financial Transaction Balance Calculation Cards */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Calculator className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-semibold">Balance Overview</h3>
+          <Badge variant="outline" className="text-xs">
+            {balanceLoading ? 'Loading...' : `Based on ${balanceCalculation.totalTransactions} transactions`}
+          </Badge>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Invested</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">₹{(walletData.totalInvested || 0).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Tracked across all transactions
-            </p>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 md:grid-cols-4">
+          {/* Total Credits */}
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-green-700 mb-1">
+                    <Plus className="h-4 w-4" />
+                    <span className="text-sm font-medium">Total Credits</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-800">
+                    {balanceLoading ? (
+                      <RefreshCw className="h-6 w-6 animate-spin" />
+                    ) : (
+                      `₹${balanceCalculation.totalCredits.toLocaleString()}`
+                    )}
+                  </div>
+                  <div className="text-xs text-green-600 mt-1">
+                    {balanceCalculation.creditCount} transactions
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Withdrawn</CardTitle>
-            <Minus className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">₹{(walletData.totalWithdrawn || 0).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Total withdrawn funds
-            </p>
-          </CardContent>
-        </Card>
+          {/* Total Debits */}
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-red-700 mb-1">
+                    <Minus className="h-4 w-4" />
+                    <span className="text-sm font-medium">Total Debits</span>
+                  </div>
+                  <div className="text-2xl font-bold text-red-800">
+                    {balanceLoading ? (
+                      <RefreshCw className="h-6 w-6 animate-spin" />
+                    ) : (
+                      `₹${balanceCalculation.totalDebits.toLocaleString()}`
+                    )}
+                  </div>
+                  <div className="text-xs text-red-600 mt-1">
+                    {balanceCalculation.debitCount} transactions
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Profit Earned</CardTitle>
-            <Plus className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">₹{(walletData.profitEarned || 0).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Total profit earned
-            </p>
-          </CardContent>
-        </Card>
+          {/* Net Balance */}
+          <Card className={`border-2 ${balanceCalculation.netBalance >= 0 ? 'border-primary bg-primary/5' : 'border-orange-400 bg-orange-50'}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className={`flex items-center gap-2 mb-1 ${balanceCalculation.netBalance >= 0 ? 'text-primary' : 'text-orange-700'}`}>
+                    <WalletIcon className="h-4 w-4" />
+                    <span className="text-sm font-medium">Available Balance</span>
+                  </div>
+                  <div className={`text-2xl font-bold ${balanceCalculation.netBalance >= 0 ? 'text-primary' : 'text-orange-800'}`}>
+                    {balanceLoading ? (
+                      <RefreshCw className="h-6 w-6 animate-spin" />
+                    ) : (
+                      `₹${balanceCalculation.netBalance.toLocaleString()}`
+                    )}
+                  </div>
+                  <div className={`text-xs mt-1 ${balanceCalculation.netBalance >= 0 ? 'text-primary/70' : 'text-orange-600'}`}>
+                    Credits - Debits
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Calculation Summary */}
+          <Card className="border-gray-200 bg-gray-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-gray-700 mb-1">
+                    <Calculator className="h-4 w-4" />
+                    <span className="text-sm font-medium">Summary</span>
+                  </div>
+                  <div className="text-xs text-gray-600 leading-relaxed">
+                    {balanceLoading ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <div>Credits: +₹{balanceCalculation.totalCredits.toLocaleString()}</div>
+                        <div>Debits: -₹{balanceCalculation.totalDebits.toLocaleString()}</div>
+                        <div className="border-t mt-1 pt-1 font-medium">
+                          Balance: ₹{balanceCalculation.netBalance.toLocaleString()}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
       </div>
 
 
@@ -1222,20 +1372,6 @@ const Wallet = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-green-800 mb-1">Auto-Sync Active 🔄</h4>
-                    <p className="text-sm text-green-700 mb-1">
-                      Your wallet balance automatically updates based on financial transactions.
-                    </p>
-                    <p className="text-xs text-green-600">
-                      💰 Balance = Sum of all transaction amounts | 💹 Total Invested = Sum from transaction notes
-                    </p>
-                  </div>
-                </div>
-              </div>
               <FinancialTransactionsTable
                 userId={user?.id || user?._id}
                 companyId="62d66794e54f47829a886a1d"
