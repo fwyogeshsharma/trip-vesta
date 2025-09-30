@@ -82,6 +82,7 @@ const Wallet = () => {
   const [currentTab, setCurrentTab] = useState("manage");
   const [netBalance, setNetBalance] = useState(0);
   const [balanceLoading, setBalanceLoading] = useState(false);
+  const [addFundsLoading, setAddFundsLoading] = useState(false);
   const [balanceCalculation, setBalanceCalculation] = useState({
     totalCredits: 0,
     totalDebits: 0,
@@ -639,6 +640,7 @@ const Wallet = () => {
       return;
     }
 
+    setAddFundsLoading(true);
     try {
       const token = getAuthToken();
       if (!token) {
@@ -720,6 +722,8 @@ const Wallet = () => {
         description: error instanceof Error ? error.message : 'Failed to create payment request',
         variant: "destructive"
       });
+    } finally {
+      setAddFundsLoading(false);
     }
   };
 
@@ -1227,9 +1231,9 @@ const Wallet = () => {
                 <Button
                   onClick={handleAddFunds}
                   className="w-full"
-                  disabled={isLoading}
+                  disabled={addFundsLoading}
                 >
-                  {isLoading ? (
+                  {addFundsLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Processing...
@@ -1239,21 +1243,6 @@ const Wallet = () => {
                   )}
                 </Button>
 
-                {/* Test Balance Button for Demo */}
-                <Button
-                  onClick={() => {
-                    addToBalance(50000, "Demo balance for testing investments");
-                    toast({
-                      title: "Demo Balance Added",
-                      description: "₹50,000 added for testing investments",
-                    });
-                  }}
-                  variant="outline"
-                  className="w-full mt-2"
-                  disabled={isLoading}
-                >
-                  Add ₹50,000 Demo Balance
-                </Button>
                 <p className="text-xs text-muted-foreground mt-2">
                   Secure payment powered by your payment gateway
                 </p>
