@@ -1,3 +1,6 @@
+/* ACCOUNT LEDGER PAGE - COMMENTED OUT AS REQUESTED */
+
+/*
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +118,11 @@ const transactions = [
     category: "wallet"
   }
 ];
+*/
 
+/* ACCOUNT LEDGER COMPONENT - COMMENTED OUT AS REQUESTED */
+
+/*
 const AccountLedger = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -217,7 +224,7 @@ const AccountLedger = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards *}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -260,7 +267,7 @@ const AccountLedger = () => {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters *}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -309,7 +316,7 @@ const AccountLedger = () => {
               </Select>
             </div>
 
-            {/* Date Range Filter */}
+            {/* Date Range Filter *}
             <div className="flex flex-col md:flex-row gap-4 items-center">
               <div className="flex items-center gap-2">
                 <CalendarRange className="h-4 w-4 text-muted-foreground" />
@@ -354,7 +361,7 @@ const AccountLedger = () => {
         </CardContent>
       </Card>
 
-      {/* Transactions List */}
+      {/* Transactions List *}
       <Card>
         <CardHeader>
           <CardTitle>Recent Transactions</CardTitle>
@@ -382,7 +389,7 @@ const AccountLedger = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className={`font-semibold ${getAmountColor(transaction.type)}`}>
@@ -393,7 +400,7 @@ const AccountLedger = () => {
                 </div>
               </div>
             ))}
-            
+
             {filteredTransactions.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <HistoryIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -412,6 +419,19 @@ const AccountLedger = () => {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+};
+*/
+
+// Placeholder component to prevent import errors
+const AccountLedger = () => {
+  return (
+    <div className="flex-1 space-y-6 p-6 bg-background text-foreground">
+      <div className="text-center py-12">
+        <h1 className="text-2xl font-bold text-muted-foreground">Account Ledger</h1>
+        <p className="text-muted-foreground mt-2">This page has been temporarily disabled.</p>
+      </div>
     </div>
   );
 };

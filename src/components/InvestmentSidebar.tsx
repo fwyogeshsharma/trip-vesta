@@ -23,7 +23,7 @@ const investorItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Wallet", url: "/wallet", icon: Wallet },
   { title: "Trips", url: "/trips", icon: MapPin },
-  { title: "Account Ledger", url: "/history", icon: BookOpen },
+  // { title: "Account Ledger", url: "/history", icon: BookOpen }, // COMMENTED OUT - Account Ledger disabled
 ];
 
 const adminItems = [

@@ -13,7 +13,7 @@ import { Moon, Sun } from "lucide-react";
 import Dashboard from "@/pages/Dashboard";
 import Wallet from "@/pages/Wallet";
 import Trips from "@/pages/Trips";
-import AccountLedger from "@/pages/History";
+// import AccountLedger from "@/pages/History"; // COMMENTED OUT - Account Ledger disabled
 import Admin from "@/pages/Admin";
 import KYC from "@/pages/KYC";
 import Settings from "@/pages/Settings";
@@ -67,7 +67,7 @@ const RoleBasedPortal = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/wallet" element={<Wallet />} />
         <Route path="/trips" element={<Trips />} />
-        <Route path="/history" element={<AccountLedger />} />
+        {/* <Route path="/history" element={<AccountLedger />} /> */} {/* COMMENTED OUT - Account Ledger disabled */}
         <Route path="/kyc" element={<KYC />} />
         <Route path="/settings" element={<Settings />} />
       </>
